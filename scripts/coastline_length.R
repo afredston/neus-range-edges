@@ -13,7 +13,7 @@ ymin=35
 ymax=45
 
 usamap <- rnaturalearth::ne_countries(scale = "small", country = "united states of america", returnclass = "sf")[1] %>% 
-  st_cast("LINESTRING")
+  st_cast("MULTILINESTRING")
 
 bbox1 <- st_set_crs(st_as_sf(as(raster::extent(xmin, xmax, ymin, ymax), "SpatialPolygons")), st_crs(usamap))
 bbox2 <- st_set_crs(st_as_sf(as(raster::extent(-78, -74, 42, 45), "SpatialPolygons")), st_crs(usamap))
@@ -38,5 +38,6 @@ coastdistdat <- data.frame(smoothgeom[, c('x','y')], seglength=c(0, geomdists))
 coastdistdat$lengthfromhere <- rev(cumsum(rev(coastdistdat[,"seglength"])))
 # first row should match st_length(smoothmap)
 
+st_write(smoothmap, here("processed-data","coastline.shp"))
 write_rds(coastdistdat, here("processed-data","coastdistdat.rds"))
 rm(list=ls())
