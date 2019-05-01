@@ -15,7 +15,8 @@ sa.spp <- readRDS(here("processed-data", "sa_spp.rds"))
 ### SET DATA PREFERENCES
 ################
 
-minnumobs <- 100 # min number of total observations
+num_obs_year_cutoff <- 10 # how many times does a species need to be observed in a year for that species*year combo to be included in analysis? 
+numyears_cutoff <- 10 
 northerncutoff <- 42 # max lat at which a range edge can start and still be classified a northern edge (beyond this, the species could extend into Cape Cod / Canada )
 aquamaps.pol.cutoff <- 50 # if aquamaps says a species' 95th percentile lat falls ABOVE this value, we discard it 
 aquamaps.eq.cutoff <- 30 # if aquamaps says a species' 05th percentile lat falls BELOW this value, we discard it 
@@ -76,21 +77,26 @@ fishbase.species <- rfishbase::species(fishbaselist, fields = "FBname") %>%
 eqdat <- neus %>% 
   rename(latinname = sciname) %>% 
   filter(!latinname %in% sa.spp, # keep only species that have never been observed in SA--true northern species 
-         class %in% keepclass) %>%  # keep only fish 
+         class %in% keepclass, # keep only fish 
+         !latinname %in% aquamaps.noteq,
+         !latinname %in% iucnfb.manual.noteq) %>%  
   left_join(fishbase.species, by="latinname") %>% 
+  group_by(latinname, year) %>% 
+  mutate(
+    numobsyear = length(unique(haulid))
+  ) %>% 
+  ungroup() %>% 
+  filter(numobsyear >= num_obs_year_cutoff) %>% # get rid of all species*year combos where the species was observed fewer than 10 times 
   group_by(latinname) %>% 
   mutate(
     numyears = length(unique(year)), # do this late in the workflow so it is an accurate count for remaining species/hauls 
-    numobs = length(unique(haulid))) %>% 
+    numobs = length(unique(haulid)),
+    meanobsyear = numobs / numyears) %>% 
   ungroup() %>% 
-  filter(
-    #  numyears >= minnumyears, TAKING THIS OUT--NUMOBS SHOULD GET RID OF MOST OF THE LOW FREQUENCY SPECIES ANYWAY
-    numobs >= minnumobs, # do this late in the workflow so it is an accurate count for remaining species/hauls 
-    !latinname %in% aquamaps.noteq,
-    !latinname %in% iucnfb.manual.noteq)
+  filter(numyears >= numyears_cutoff)
 
 eqdat.summ <- eqdat %>% 
-  group_by(latinname, commonname, numobs, numyears) %>% 
+  group_by(latinname, commonname, numobs, numyears, meanobsyear) %>% 
   summarise()
 
 # poleward edge df--more complex because I don't have an analog to SA to help identify which species have true edges 
@@ -116,13 +122,19 @@ poldat <- neus %>%
   filter(firstlat_max < 42,
          !latinname %in% aquamaps.notpol,
          !latinname %in% iucnfb.manual.notpol) %>% 
+  group_by(latinname, year) %>% 
+  mutate(numobsyear = length(unique(haulid))) %>% 
+  ungroup() %>% 
+  filter(numobsyear >= num_obs_year_cutoff) %>% 
   group_by(latinname) %>% 
   mutate(numobs = length(unique(haulid)),
-         numyears = length(unique(year))) %>% 
-  filter(numobs > 100)
+         numyears = length(unique(year)),
+         meanobsyear = numobs / numyears) %>% 
+  ungroup() %>% 
+  filter(numyears >= numyears_cutoff)
 
 poldat.summ <- poldat %>% 
-  group_by(latinname, commonname, numobs, numyears) %>% 
+  group_by(latinname, commonname, numobs, numyears, meanobsyear) %>% 
   summarise()
 
 # final check:

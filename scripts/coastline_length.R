@@ -12,20 +12,18 @@ xmax=-66
 ymin=35
 ymax=45
 
-bbox <- extent(xmin, xmax, ymin, ymax)
-
 usamap <- rnaturalearth::ne_countries(scale = "small", country = "united states of america", returnclass = "sf")[1] %>% 
-  st_cast("MULTILINESTRING")
+  st_cast("LINESTRING")
 
+bbox1 <- st_set_crs(st_as_sf(as(raster::extent(xmin, xmax, ymin, ymax), "SpatialPolygons")), st_crs(usamap))
 bbox2 <- st_set_crs(st_as_sf(as(raster::extent(-78, -74, 42, 45), "SpatialPolygons")), st_crs(usamap))
 
 neusmap <- usamap %>% 
-  st_crop(bbox) %>% 
+  st_intersection(bbox1) %>% # can replace with st_crop when CRAN version of sf updates 
   st_difference(bbox2) # get rid of extra non coastal line 
 
 smoothmap <- neusmap %>% 
   smoothr::smooth(method="ksmooth", smoothness=8)
-# ggplot() + geom_sf(data=smoothmap)
 # smoother was applied incrementally more until the Chesapeake went away 
 # https://cran.r-project.org/web/packages/smoothr/vignettes/smoothr.html
 
