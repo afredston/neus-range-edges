@@ -1,0 +1,119 @@
+library(here)
+library(tidyverse)
+library(purrr)
+library(broom)
+
+# add in lat analysis too? to compare/contrast
+
+poldat.stats <- readRDS(here("processed-data","poldat.stats.rds"))
+eqdat.stats <- readRDS(here("processed-data","eqdat.stats.rds"))
+
+
+#################
+# LM: edge ~ time 
+#################
+
+
+poldat.lm <- poldat.stats %>% 
+  dplyr::select(latinname, commonname, spp.dist95, year) %>% 
+  distinct() %>% 
+  group_by(commonname) %>% 
+  nest() %>% 
+  mutate(
+    model = map(data, ~lm(spp.dist95 ~ year, data = .x)), 
+    tidymodel = map(model, tidy)
+  ) %>% 
+  unnest(tidymodel, .drop=TRUE) 
+
+eqdat.lm <- eqdat.stats %>% 
+  dplyr::select(latinname, commonname, spp.dist05, year) %>% 
+  distinct() %>% 
+  group_by(commonname) %>% 
+  nest() %>% 
+  mutate(
+    model = map(data, ~lm(spp.dist05 ~ year, data = .x)), 
+    tidymodel = map(model, tidy)
+  ) %>% 
+  unnest(tidymodel, .drop=TRUE) 
+
+#################
+# LM: depth ~ time 
+#################
+
+#################
+# GLM: edge ~ temperature 
+#################
+
+#################
+# Make Figure 1
+#################
+
+#################
+# Make Figure 2 
+#################
+
+pol.lm.gg <- poldat.lm %>% 
+  filter(term=="year") %>% 
+  arrange(estimate) %>% 
+  mutate(commonname=factor(commonname, unique(commonname)),
+         signif=ifelse(p.value<=0.05, "yes","no")) %>% 
+  ggplot(aes(x=commonname, y=estimate, ymin=(estimate-std.error), ymax=(estimate+std.error), color = signif, fill=signif)) + 
+  geom_pointrange() + 
+  scale_colour_manual(values=c("yes" ="#EAAE58","no" = "#37AD97")) + 
+  geom_hline(yintercept=0) +
+  labs(x=NULL, y="Est. Effect of Year on Edge Position (m)", title="Poleward Edge Assemblage") +
+  coord_flip() +
+  NULL
+pol.lm.gg
+
+eq.lm.gg <- eqdat.lm %>% 
+  filter(term=="year") %>% 
+  arrange(estimate) %>% 
+  mutate(commonname=factor(commonname, unique(commonname)),
+         signif=ifelse(p.value<=0.05, "yes","no")) %>% 
+  ggplot(aes(x=commonname, y=estimate, ymin=(estimate-std.error), ymax=(estimate+std.error), color=signif, fill=signif)) + 
+  geom_pointrange() + 
+  scale_colour_manual(values=c("yes" ="#EAAE58","no" = "#37AD97")) + 
+  geom_hline(yintercept=0) +
+  labs(x=NULL, y="Est. Effect of Year on Edge Position (m)", title="Equatorward Edge Assemblage") +
+  coord_flip() +
+  NULL
+eq.lm.gg
+
+#################
+# time series 
+#################
+
+pol.spp.time <- poldat.stats %>% 
+  dplyr::select(commonname, year, spp.dist95) %>% 
+  distinct() %>% 
+  ggplot(aes(x=year, y=spp.dist95)) +
+  geom_line(color="grey39") +
+  geom_point(size=0.75) + 
+  facet_wrap(~ commonname, ncol=4) +
+  theme_linedraw() +
+  theme(strip.background =element_rect(fill="grey39"))+
+  theme(strip.text = element_text(colour = 'white', face="bold")) +
+  scale_x_continuous(limits=c(1968,2017), breaks=seq(1968, 2017, 4)) +
+  theme(axis.text.x = element_text(angle=90)) +
+  ylab("Poleward Edge Position") +
+  xlab("Year") +
+  NULL
+pol.spp.time
+
+eq.spp.time <- eqdat.stats %>% 
+  dplyr::select(commonname, year, spp.dist05) %>% 
+  distinct() %>% 
+  ggplot(aes(x=year, y=spp.dist05)) +
+  geom_line(color="grey39") +
+  geom_point(size=0.75) + 
+  facet_wrap(~ commonname, ncol=4) +
+  theme_linedraw() +
+  theme(strip.background =element_rect(fill="grey39"))+
+  theme(strip.text = element_text(colour = 'white', face="bold")) +
+  scale_x_continuous(limits=c(1968,2017), breaks=seq(1968, 2017, 4)) +
+  theme(axis.text.x = element_text(angle=90)) +
+  ylab("Equatorward Edge Position") +
+  xlab("Year") +
+  NULL
+eq.spp.time
