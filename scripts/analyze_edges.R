@@ -23,7 +23,23 @@ poldat.lm <- poldat.stats %>%
     model = map(data, ~lm(spp.dist95 ~ year, data = .x)), 
     tidymodel = map(model, tidy)
   ) %>% 
-  unnest(tidymodel, .drop=TRUE) 
+  unnest(tidymodel, .drop=TRUE) %>% 
+  filter(term=="year")
+
+poldat.corr <- poldat.stats %>% 
+  dplyr::select(commonname, spp.dist95, year) %>% 
+  distinct() %>% 
+  nest(-commonname) %>% 
+  mutate(
+    test = map(data, ~ cor.test(.x$spp.dist95, .x$year, method="spearman")),
+    tidied = map(test, tidy)) %>% 
+  unnest(tidied, .drop=TRUE) 
+
+poldat.assemblage.lm <- poldat.stats %>% 
+  dplyr::select(year, assemblage.dist95) %>% 
+  distinct() %>% 
+  lm(assemblage.dist95 ~ year, data = .) %>% 
+  summary()
 
 eqdat.lm <- eqdat.stats %>% 
   dplyr::select(latinname, commonname, spp.dist05, year) %>% 
@@ -34,7 +50,24 @@ eqdat.lm <- eqdat.stats %>%
     model = map(data, ~lm(spp.dist05 ~ year, data = .x)), 
     tidymodel = map(model, tidy)
   ) %>% 
-  unnest(tidymodel, .drop=TRUE) 
+  unnest(tidymodel, .drop=TRUE) %>% 
+  filter(term=="year")
+
+eqdat.corr <- eqdat.stats %>% 
+  dplyr::select(commonname, spp.dist05, year) %>% 
+  distinct() %>% 
+  nest(-commonname) %>% 
+  mutate(
+    test = map(data, ~ cor.test(.x$spp.dist05, .x$year, method="spearman")),
+    tidied = map(test, tidy)) %>% 
+  unnest(tidied, .drop=TRUE) 
+
+eqdat.assemblage.lm <- eqdat.stats %>% 
+  dplyr::select(year, assemblage.dist05) %>% 
+  distinct() %>% 
+  lm(assemblage.dist05 ~ year, data = .) %>% 
+  summary() 
+
 
 #################
 # LM: depth ~ time 

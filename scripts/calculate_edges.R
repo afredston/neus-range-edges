@@ -22,19 +22,19 @@ get_length <- function(lon, lat, distdf) {
 
 poldat.stats <- poldat %>% 
   rowwise() %>% 
-  mutate(coastdist = get_length(lon=lon, lat=lat, distdf = coastdistdat)) %>% 
+  mutate(coastdist_km = (get_length(lon=lon, lat=lat, distdf = coastdistdat))/1000) %>% 
   ungroup() %>% 
   group_by(year) %>% 
   mutate(
-    assemblage.dist95 = quantile(coastdist, 0.95)
+    assemblage.dist95 = quantile(coastdist_km, 0.95)
   ) %>% 
   ungroup() %>% 
   group_by(year, latinname) %>% 
   mutate(
-    spp.dist90 = quantile(coastdist, 0.90), 
-    spp.dist95 = quantile(coastdist, 0.95), 
-    spp.dist99 = quantile(coastdist, 0.99), 
-    spp.distmax = max(coastdist),
+    spp.dist90 = quantile(coastdist_km, 0.90), 
+    spp.dist95 = quantile(coastdist_km, 0.95), 
+    spp.dist99 = quantile(coastdist_km, 0.99), 
+    spp.distmax = max(coastdist_km),
     biomass.sum = sum(biomass.correct), 
     depth.mean = mean(depth),
     depth.mean.wt = weighted.mean(depth, w=biomass.correct, na.rm=TRUE)
@@ -48,19 +48,19 @@ poldat.stats <- poldat %>%
 
 eqdat.stats <- eqdat %>% 
   rowwise() %>% 
-  mutate(coastdist = get_length(lon=lon, lat=lat, distdf = coastdistdat)) %>% 
+  mutate(coastdist_km = (get_length(lon=lon, lat=lat, distdf = coastdistdat))/1000) %>% 
   ungroup() %>% 
   group_by(year) %>% 
   mutate(
-    assemblage.dist05 = quantile(coastdist, 0.05)
+    assemblage.dist05 = quantile(coastdist_km, 0.05)
   ) %>% 
   ungroup() %>% 
   group_by(year, latinname) %>% 
   mutate(
-    spp.dist10 = quantile(coastdist, 0.10), 
-    spp.dist05 = quantile(coastdist, 0.05), 
-    spp.dist01 = quantile(coastdist, 0.01), 
-    spp.distmin = min(coastdist),
+    spp.dist10 = quantile(coastdist_km, 0.10), 
+    spp.dist05 = quantile(coastdist_km, 0.05), 
+    spp.dist01 = quantile(coastdist_km, 0.01), 
+    spp.distmin = min(coastdist_km),
     biomass.sum = sum(biomass.correct), 
     depth.mean = mean(depth),
     depth.mean.wt = weighted.mean(depth, w=biomass.correct, na.rm=TRUE)
