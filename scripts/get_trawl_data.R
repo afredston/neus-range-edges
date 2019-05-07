@@ -3,6 +3,7 @@
 # go to https://oceanadapt.rutgers.edu/
 # download all data from the Northeast US 
 # this was done for this project on March 14, 2019
+# South Atlantic summary data was downloaded from OceanAdapt on May 5, 2019
 # trawlData is used here only to get useful taxonomic information
 # see here: https://github.com/rBatt/trawlData/wiki/Install-trawlData
 
@@ -24,14 +25,6 @@ trawldata.spplist <- clean.neus %>%
   distinct() %>% 
   rename_all(tolower) %>% 
   mutate_all(tolower) 
-
-# we'll use this in other scripts; not necessary now but generating it while trawlData is loaded 
-data(clean.sa)
-sa.spp <- clean.sa %>% 
-  dplyr::select(spp, taxLvl) %>% 
-  distinct() %>% 
-  filter(taxLvl=="species") %>% 
-  pull(spp)
 
 neus.spp.prep <- neus.svspp.raw %>% 
   rename_all(tolower) %>% 
@@ -81,5 +74,4 @@ neus <- neus.data.raw %>%
 # neus.explore 
 
 saveRDS(neus, here("processed-data","neus.rds"))
-saveRDS(sa.spp, here("processed-data","sa_spp.rds"))
 rm(list=ls())

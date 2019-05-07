@@ -9,7 +9,10 @@ library(rfishbase)
 library(stringr)
 
 neus <- readRDS(here("processed-data", "neus.rds")) 
-sa.spp <- readRDS(here("processed-data", "sa_spp.rds"))
+sa.spp <- read_csv(here("data", "oceanadapt_SA_050519.csv")) %>% 
+  dplyr::select(Species) %>% 
+  distinct() %>% 
+  pull()
 
 ################
 ### SET DATA PREFERENCES
@@ -59,19 +62,18 @@ aquamaps.noteq <- aquamaps.neus[aquamaps.neus$lat05<aquamaps.eq.cutoff,]$species
 iucnfb.manual.notpol <- c("Brevoortia tyrannus","Dipturus laevis","Morone saxatilis","Peprilus triacanthus","Pomatomus saltatrix","Urophycis regia","Zenopsis conchifera","Alosa sapidissima", "Tautogolabrus adspersus","Prionotus evolans") 
 # having looked up the leading edge species by hand, remove these! in this case they all have range edges in canada somewhere. if iucn was unclear I used fishbase as a tiebreaker--if fishbase said the range was as far north as 46N or so (since fishbase has the color coding to show abundance), I kept it in. if IUCN said it's in the US but Fishbase says it's way into Canada I took it out.
 
-iucnfb.manual.noteq <- c("Menidia menidia","Zenopsis conchifera","Alosa sapidissima","Squatina dumeril","Cynoscion regalis","Prionotus evolans") 
+iucnfb.manual.noteq <- c("Menidia menidia","Zenopsis conchifera","Alosa sapidissima","Squatina dumeril","Cynoscion regalis","Prionotus evolans","Lophius americanus") 
 
 ################
 ### MAKE DATAFRAMES
 ################
 
 # get common names from fishbase 
-fishbaselist <- rfishbase::validate_names(unique(neus$species)) # this replaces names with no match with NAs
+fishbaselist <- rfishbase::validate_names(unique(neus$sciname)) # this replaces names with no match with NAs
 
-fishbase.species <- rfishbase::species(fishbaselist, fields = "FBname") %>% 
-  rename(latinname = sciname,
-         commonname = FBname) %>% 
-  dplyr::select(-SpecCode)
+fishbase.species <- rfishbase::species(fishbaselist, fields = c("FBname","Species")) %>% 
+  rename(latinname = Species,
+         commonname = FBname) 
 
 # equatorward edge df 
 eqdat <- neus %>% 
