@@ -1,16 +1,27 @@
 # this analysis uses data from SODA, the Simple Ocean Data Assimilation project: http://www.soda.umd.edu/
 # various datasets for SODA are available on that website. some are also available through NOAA's ERDDAP API (the rerddap package), but they are not the newest versions of the models (J. Carton pers. comm.). 
-# selecting a SODA model for ecological purposes is challenging because the different sub-models vary in certain assumptions that are difficult for us to judge. I used soda 3.4.2 which is commonly used by meteorologists (J. Carton pers. comm.), but of course the most thorough approach would be to try all of them and see how sensitive the ecological results are to the temperature model. 
-# for replication, any time-series dataset of sea bottom temperature (or sea surface temperature, for that matter) from 1968-2017 could be substituted here. 
+# selecting a SODA model for ecological purposes is challenging because the different sub-models vary in certain assumptions that are difficult for us to judge. I used soda 3.4.2 which is commonly used by meteorologists (J. Carton pers. comm.)
 # the US EEZ shapefile used here can be downloaded from: http://www.marineregions.org/downloads.php
 
 library(here)
-library(ncdf4)
-library(stars)
+library(raster)
 library(sf)
 library(oceanmap)
+library(tidyverse)
 
-# crop to extent of shelf, <400m 
+#############
+# READ IN TEMPERATURE DATA 
+#############
+
+soda_in <- raster::stack(here("data", "soda3.4.2_mn_ocean_reg_bottemp.nc")) %>% 
+  rotate() # Rotate it to be -180 to 180
+
+# reproject
+soda_lonlat <- projectRaster(soda_in, crs = "+proj=longlat +ellps=WGS84 +no_defs")
+
+#############
+# CREATE SHELF MASK 
+#############
 
 lonrange <- c(-77, -66)
 latrange <- c(35, 45)
@@ -32,31 +43,43 @@ useez <- eezs %>%
 bathy.mask <- bathy %>% 
   as("SpatialPolygonsDataFrame") %>% 
   st_as_sf() %>% # retains CRS of bathy.raw
-  dplyr::filter(layer <= 400) %>% # get rid of values over 400m deep; justify with Kleisner paper 
+  dplyr::filter(layer <= 400) %>% # get rid of values over 400m deep
+  mutate(layer = NA) %>% 
   st_intersection(st_union(useez)) # keep only points within the EEZ; crop out lakes, Canada 
 
-plot(bathy.mask) # check that it's a shelf and that lakes are gone 
+# plot(bathy.mask) # check that it's a shelf and that lakes are gone 
 
+#############
+# CROP AND SUMMARIZE TEMPERATURE DATA
+#############
 
-soda <- stars::read_ncdf(here("data","soda3.4.2_mn_ocean_reg_bottemp.nc")) 
+# crop to extent of shelf <400m 
+soda_neus <- soda_lonlat %>% 
+  raster::mask(bathy.mask) %>% 
+  raster::crop(extent(bathy.mask))
 
-# st_crs(soda) <- bathy.crs 
-# don't think this is right--because I think it translates into nonsensical coordinates, below, which causes the error 
+# create summary data 
+soda_df <- raster::as.data.frame(soda_neus, xy=TRUE, long=TRUE) %>% 
+  mutate(
+         time = lubridate::ymd(str_sub(str_replace(layer, "X", ""), 1, 10)),
+         year = lubridate::year(time),
+         month = lubridate::month(time)
+         ) %>% 
+  dplyr::select(-layer) %>% 
+  rename(btemp = value) %>% 
+  filter(!is.na(btemp)) 
 
-soda.neus <- soda %>% 
-  st_crop(bathy.mask)
-soda.neus <- soda[bathy.mask] # what is wrong with the coordinates of the soda.nc file!? 
+soda_stats <- soda_df %>% 
+  group_by(year) %>% 
+  mutate(
+    btemp.year = mean(btemp)
+  ) %>% 
+  ungroup() %>% 
+  group_by(year, y) %>% 
+  mutate(
+    btemp.lat.year = mean(btemp)
+    ) %>% 
+  ungroup()
 
-time <- ncvar_get(nc, "time") # https://code.mpimet.mpg.de/boards/1/topics/5623
-tunits <- ncatt_get(nc,"time","units")
-nt <- dim(time)
-
-ncdates = as.Date(nc$dim$time$vals, origin='1980-01-15')
-
-
-tustr <- strsplit(tunits$value, " ")
-tdstr <- strsplit(unlist(tustr)[3], "-")
-tmonth <- as.integer(unlist(tdstr)[2])
-tday <- as.integer(unlist(tdstr)[3])
-tyear <- as.integer(unlist(tdstr)[1])
-chron(time,origin=c(tmonth, tday, tyear))
+write_rds(soda_stats, here("processed-data","soda_stats.rds"))
+rm(list=ls())

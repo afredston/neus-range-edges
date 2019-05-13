@@ -2,11 +2,16 @@ library(here)
 library(tidyverse)
 library(purrr)
 library(broom)
+library(cowplot)
 
 # add in lat analysis too? to compare/contrast
 
 poldat.stats <- readRDS(here("processed-data","poldat.stats.rds"))
 eqdat.stats <- readRDS(here("processed-data","eqdat.stats.rds"))
+
+gg <- ggplot(data=poldat.stats) + 
+  geom_line(aes(x=year, y=biomass.sum)) + 
+  facet_wrap(~commonname)
 
 
 #################
@@ -220,50 +225,99 @@ eq.ord.tmp <- eqdat.abund.lm %>%
 # make axes more consistent
 # make 4-panel diagram 
 
-pol.depth.shift.gg <- ggplot(data=pol.ord.tmp) + 
-  geom_point(aes(x=depth.est, y=edge.est)) +
-  geom_errorbar(aes(x=depth.est, ymin = edge.est-edge.sd, ymax = edge.est+edge.sd)) + 
-  geom_errorbarh(aes(y=edge.est, xmin = depth.est-depth.sd,xmax = depth.est+depth.sd)) + 
-  geom_hline(yintercept=0) + 
-  geom_vline(xintercept=0) +
-  labs(x="Estimated Effect of Year on Depth (m/yr)", y="Estimated Effect of Year on Edge Position (km/yr)") +
+plot_theme <-   theme_minimal()+
+  theme(text=element_text(family="sans",size=12,color="black"),
+        legend.text = element_text(size=14),
+        axis.title=element_text(family="sans",size=14,color="black"),
+        axis.text=element_text(family="sans",size=8,color="black"),
+        panel.grid.major = element_line(color="gray50",linetype=3),
+        plot.background = element_rect(color='black'))
+
+pol.depth.shift.gg <- ggplot() + 
+  geom_hline(yintercept=0, color="darkgrey") + 
+  geom_vline(xintercept=0, color="darkgrey") + 
+  geom_point(data=pol.ord.tmp, aes(x=depth.est, y=edge.est), shape = 19) +
+  geom_errorbar(data=pol.ord.tmp, aes(x=depth.est, ymin = edge.est-edge.sd, ymax = edge.est+edge.sd)) + 
+  geom_errorbarh(data=pol.ord.tmp, aes(y=edge.est, xmin = depth.est-depth.sd,xmax = depth.est+depth.sd)) + 
+  labs(x="Depth Shift (m/yr)", y="Poleward Edge Shift (km/yr)") + 
+  scale_x_continuous(breaks=seq(-4, 4, 1), limits=c(-4,4)) +
+  scale_y_continuous(breaks=seq(-35, 35, 5), limits=c(-35, 35)) + 
+  annotate("text", x=-3.5, y=30, size=8, label="A") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        text=element_text(family="sans",size=12,color="black"),
+        legend.text = element_text(size=12),
+        axis.title=element_text(family="sans",size=12,color="black"),
+        axis.text=element_text(family="sans",size=8,color="black"),
+        axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.x = element_blank()) +  
   NULL
 
-eq.depth.shift.gg <- ggplot(data=eq.ord.tmp) + 
-  geom_point(aes(x=depth.est, y=edge.est)) +
-  geom_errorbar(aes(x=depth.est, ymin = edge.est-edge.sd, ymax = edge.est+edge.sd)) + 
-  geom_errorbarh(aes(y=edge.est, xmin = depth.est-depth.sd,xmax = depth.est+depth.sd)) + 
-  geom_hline(yintercept=0) + 
-  geom_vline(xintercept=0) +
-  labs(x="Estimated Effect of Year on Depth (m/yr)", y="Estimated Effect of Year on Edge Position (km/yr)") +
+eq.depth.shift.gg <- ggplot() + 
+  geom_hline(yintercept=0, color="darkgrey") + 
+  geom_vline(xintercept=0, color="darkgrey") + 
+  geom_point(data=eq.ord.tmp, aes(x=depth.est, y=edge.est), shape = 15) +
+  geom_errorbar(data=eq.ord.tmp, aes(x=depth.est, ymin = edge.est-edge.sd, ymax = edge.est+edge.sd)) + 
+  geom_errorbarh(data=eq.ord.tmp, aes(y=edge.est, xmin = depth.est-depth.sd,xmax = depth.est+depth.sd)) + 
+  labs(x="Depth Shift (m/yr)", y="Equatorward Edge Shift (km/yr)") + 
+  scale_x_continuous(breaks=seq(-4, 4, 1), limits=c(-4,4)) +
+  scale_y_continuous(breaks=seq(-35, 35, 5), limits=c(-35, 35)) + 
+  annotate("text", x=-3.5, y=30, size=8, label="C") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        text=element_text(family="sans",size=12,color="black"),
+        legend.text = element_text(size=12),
+        axis.title=element_text(family="sans",size=12,color="black"),
+        axis.text=element_text(family="sans",size=8,color="black")) +
   NULL
 
-pol.depth.shift.gg <- ggplot(data=pol.ord.tmp) + 
-  geom_point(aes(x=depth.est, y=edge.est)) +
-  geom_errorbar(aes(x=depth.est, ymin = edge.est-edge.sd, ymax = edge.est+edge.sd)) + 
-  geom_errorbarh(aes(y=edge.est, xmin = depth.est-depth.sd,xmax = depth.est+depth.sd)) + 
-  geom_hline(yintercept=0) + 
-  geom_vline(xintercept=0) +
-  labs(x="Estimated Effect of Year on Depth (m/yr)", y="Estimated Effect of Year on Edge Position (km/yr)") +
+pol.abund.shift.gg <- ggplot() + 
+  geom_hline(yintercept=0, color="darkgrey") + 
+  geom_vline(xintercept=0, color="darkgrey") + 
+  geom_errorbar(data=pol.ord.tmp, aes(x=abund.est, ymin = edge.est-edge.sd,ymax = edge.est+edge.sd)) + 
+  geom_errorbarh(data=pol.ord.tmp, aes(y=edge.est, xmin = abund.est-abund.sd,xmax = abund.est+abund.sd)) + 
+  geom_point(data=pol.ord.tmp, aes(x=abund.est, y=edge.est), shape=21, fill="white") +
+  labs(x="Abundance Shift (mt/yr)", y="Edge Shift (km/yr)") + 
+ scale_x_continuous(breaks=seq(-160, 160, 40), limits=c(-160,160)) +
+  scale_y_continuous(breaks=seq(-35, 35, 5), limits=c(-35, 35)) + 
+  annotate("text", x=-140, y=30, size=8, label="B") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        text=element_text(family="sans",size=12,color="black"),
+        legend.text = element_text(size=12),
+        axis.title = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text = element_blank()) +
+  NULL
+  
+eq.abund.shift.gg <- ggplot() + 
+  geom_hline(yintercept=0, color="darkgrey") + 
+  geom_vline(xintercept=0, color="darkgrey") + 
+  geom_errorbar(data=eq.ord.tmp, aes(x=abund.est, ymin = edge.est-edge.sd,ymax = edge.est+edge.sd)) + 
+  geom_errorbarh(data=eq.ord.tmp, aes(y=edge.est, xmin = abund.est-abund.sd,xmax = abund.est+abund.sd)) + 
+  geom_point(data=eq.ord.tmp, aes(x=abund.est, y=edge.est), shape=22, fill="white") +
+  labs(x="Abundance Shift (mt/yr)", y="Edge Shift (km/yr)") + 
+  scale_x_continuous(breaks=seq(-160, 160, 40), limits=c(-160,160)) +
+  scale_y_continuous(breaks=seq(-35, 35, 5), limits=c(-35, 35)) + 
+  annotate("text", x=-140, y=30, size=8, label="D") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        text=element_text(family="sans",size=12,color="black"),
+        legend.text = element_text(size=12),
+        axis.title=element_text(family="sans",size=12,color="black"),
+        axis.text=element_text(family="sans",size=8,color="black"),
+        axis.title.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.text.y = element_blank()) +
   NULL
 
-pol.abund.shift.gg <- ggplot(data=pol.ord.tmp) + 
-  geom_point(aes(x=abund.est, y=edge.est)) +
-  geom_errorbar(aes(x=abund.est, ymin = edge.est-edge.sd,ymax = edge.est+edge.sd)) + 
-  geom_errorbarh(aes(y=edge.est, xmin = abund.est-abund.sd,xmax = abund.est+abund.sd)) + 
-  geom_hline(yintercept=0) + 
-  geom_vline(xintercept=0) + 
-  labs(x="Estimated Effect of Year on Abundance (kg/yr)", y="Estimated Effect of Year on Edge Position (km/yr)") +
-  NULL
-
-eq.abund.shift.gg <- ggplot(data=eq.ord.tmp) + 
-  geom_point(aes(x=abund.est, y=edge.est)) +
-  geom_errorbar(aes(x=abund.est, ymin = edge.est-edge.sd,ymax = edge.est+edge.sd)) + 
-  geom_errorbarh(aes(y=edge.est, xmin = abund.est-abund.sd,xmax = abund.est+abund.sd)) + 
-  geom_hline(yintercept=0) + 
-  geom_vline(xintercept=0) + 
-  labs(x="Estimated Effect of Year on Abundance (kg/yr)", y="Estimated Effect of Year on Edge Position (km/yr)") +
-  NULL
+fig4 <- cowplot::plot_grid(pol.depth.shift.gg, pol.abund.shift.gg, eq.depth.shift.gg, eq.abund.shift.gg, align="h",ncol=2, rel_widths = c(1,1,1,1), rel_heights = c(1,1,1,1))
+ggsave(filename=here("results","fig4.png"), width=6, height=5, dpi=300)
 
 #################
 # time series 
