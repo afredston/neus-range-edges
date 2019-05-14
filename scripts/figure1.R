@@ -44,107 +44,48 @@ neusmap <- ggplot() +
   NULL
 neusmap
 
+sbt <- read_rds(here("processed-data","soda_stats.rds")) %>% 
+  rename(lat = y, lon = x)
 
+temprange = seq(min(as.integer(sbt$btemp.lat.year))+1, max(as.integer(sbt$btemp.lat.year))-1, 1) # trim off the extreme values
 
+sbt.iso.df <- NULL
 
-
-sst.raw <- na.omit(readRDS(here("processed-data","sstraw.rds")))
-
-# crop to shelf before proceeding with calculations 
-
-bathy.raw <- get.bathy(lon = lonrange, lat = latrange, visualize = F, res = 20) 
-
-orig.bathy.crs <- bathy.raw %>% 
-  as("SpatialPolygonsDataFrame") %>% 
-  st_as_sf() %>% 
-  st_crs()
-
-# tried using mregions but couldn't figure out the key value that would get US EEZs
-# downloading world EEZ v10 
-# http://www.marineregions.org/downloads.php
-
-eezdat <- st_read(here("data/World_EEZ_v10_20180221","eez_v10.shp")) 
-
-useez <- eezdat %>% 
-  filter(Sovereign1 == "United States") %>% 
-  st_transform(crs=orig.bathy.crs) # reproject to match bathymetry 
-
-#slow
-bathy.sf <- bathy.raw %>% 
-  as("SpatialPolygonsDataFrame") %>% 
-  st_as_sf() %>% # retains CRS of bathy.raw
-  filter(layer <= 400) %>% # get rid of values over 400m deep; justify with Kleisner paper 
-  st_intersection(st_union(useez)) # keep only points within the EEZ; crop out lakes, Canada 
-
-# crop sst to shelf 
-
-sst.sf <- sst.raw %>% 
-  st_as_sf(coords=c("lon","lat"), crs = orig.bathy.crs) # sf-ify the dataframe 
-
-#slow
-sst.crop <- st_join(sst.sf, bathy.sf, left=FALSE) %>% # keep only SST points that fall within the cropped bathymetry layer
-  rename(bathymetry = layer) %>% 
-  sfc_as_cols() %>% 
-  rename(lat = y, lon = x) %>% 
-  as.data.table() # note: can remove this if I decide later that I want sst.stats to stay a sf object 
-
-
-sst.crop$year = lubridate::year(sst.crop$time)
-sst.crop$month = lubridate::month(sst.crop$time)
-sst.crop$day = lubridate::day(sst.crop$time)
-
-sstdat <- sst.crop %>% 
-  mutate(
-    year = lubridate::year(time), 
-    month = lubridate::month(time),
-    day = lubridate::day(time)
-  ) %>% 
-  group_by(lat, year) %>% 
-  mutate(mean.lat.sst = mean(sst)) %>% 
-  ungroup() %>% 
-  dplyr::select(mean.lat.sst, year, lat) %>% 
-  distinct()
-
-temprange = seq(min(as.integer(sstdat$mean.lat.sst))+1, max(as.integer(sstdat$mean.lat.sst))-1, 1) # trim off the extreme values
-
-isothermdf <- NULL
-
-for(i in min(sstdat$year):max(sstdat$year)) {
+for(i in min(sbt$year):max(sbt$year)) {
   for(j in min(temprange):max(temprange)) {
-    sstdatyear = sstdat[sstdat$year==paste0(i),] # get sst values for only one year 
-    sstmatch = sapply(j, function(x) sstdatyear$mean.lat.sst[order(abs(x-sstdatyear$mean.lat.sst))][1]) # get the value in mean.lat.sst for year i that minimizes the difference from j, the rounded temperature value 
-    latmatch = sstdatyear[sstdatyear$mean.lat.sst==sstmatch,]$lat
+    sbtyear = sbt[sbt$year==paste0(i),] # get sst values for only one year 
+    sbtmatch = sapply(j, function(x) sbtyear$btemp.lat.year[order(abs(x-sbtyear$btemp.lat.year))][1]) # get the value for year i that minimizes the difference from j, the rounded temperature value 
+    latmatch = sbtyear[sbtyear$btemp.lat.year==sbtmatch,]$lat
     year = i
-    sstref = j
-    out = as.data.frame(cbind(year, sstref, sstmatch, latmatch))
-    isothermdf = rbind(isothermdf, out)
+    sbtref = j
+    out = as.data.frame(cbind(year, sbtref, sbtmatch, latmatch))
+    sbt.iso.df = rbind(sbt.iso.df, out)
   }
 }
 
-gg.sst.iso <- sstdat %>% 
+gg.sbt.iso <- sbt %>% 
   ggplot() +
-  geom_raster(aes(x=year, y=lat, fill=mean.lat.sst)) + 
-  geom_line(data=isothermdf, aes(x=year, y=latmatch, group=sstref)) +
+  geom_raster(aes(x=year, y=lat, fill=btemp.lat.year)) + 
+  geom_line(data=sbt.iso.df, aes(x=year, y=latmatch, group=sbtref)) +
   scale_fill_gradientn(colors=c("blue3","darkturquoise", "gold", "orangered", "red3")) + 
   NULL
-gg.sst.iso
-# this isn't going to work unless I get higher-resolution SST data from the past 
+gg.sbt.iso
 
-gg.sst <- sstdat %>% 
+gg.sbt <- sbt %>% 
   ggplot() +
-  geom_raster(aes(x=year, y=lat, fill=mean.lat.sst)) + 
+  geom_raster(aes(x=year, y=lat, fill=btemp.lat.year)) + 
   scale_fill_gradientn(colors=c("blue3","darkturquoise", "gold", "orangered", "red3")) + 
   NULL
-gg.sst
+gg.sbt
 
-isothermdf.2c <- isothermdf %>%
-  filter(sstref %% 2 == 0)
+sbt.iso.df.2c <- sbt.iso.df %>%
+  filter(sbtref %% 2 == 0)
 
-gg.sst.iso2 <- sstdat %>% 
+gg.sbt.iso2 <- sbt %>% 
   ggplot() +
-  geom_raster(aes(x=year, y=lat, fill=mean.lat.sst)) + 
+  geom_raster(aes(x=year, y=lat, fill=btemp.lat.year)) + 
   scale_fill_gradientn(colors=c("blue3","darkturquoise", "gold", "orangered", "red3")) + 
-  geom_line(data=isothermdf.2c, aes(x=year, y=latmatch, group=sstref)) +
+  geom_line(data=sbt.iso.df.2c, aes(x=year, y=latmatch, group=sbtref)) +
   NULL
-gg.sst.iso2
+gg.sbt.iso2
 # this isn't going to work unless I get higher-resolution SST data from the past 

@@ -40,11 +40,11 @@ useez <- eezs %>%
   st_transform(crs=bathy.crs) # reproject to match bathymetry 
 #slow
 
+#also slow
 bathy.mask <- bathy %>% 
   as("SpatialPolygonsDataFrame") %>% 
   st_as_sf() %>% # retains CRS of bathy.raw
-  dplyr::filter(layer <= 400) %>% # get rid of values over 400m deep
-  mutate(layer = NA) %>% 
+  dplyr::filter(layer <= 300) %>% # get rid of values over 300m deep
   st_intersection(st_union(useez)) # keep only points within the EEZ; crop out lakes, Canada 
 
 # plot(bathy.mask) # check that it's a shelf and that lakes are gone 

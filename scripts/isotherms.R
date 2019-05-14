@@ -117,7 +117,7 @@ eqdat.iso.baseline <- rbind(eqdat.stats.y1, eqdat.stats.y2, eqdat.stats.y3) %>%
 
 iso.baseline <- rbind(eqdat.iso.baseline, poldat.iso.baseline)
 
-isodf <- NULL
+out <- NULL
 for(i in min(btemp.stats$year_match):max(btemp.stats$year_match)) {
   for(j in 1:length(iso.baseline$commonname)) {
     commonname = iso.baseline$commonname[j]
@@ -133,10 +133,20 @@ for(i in min(btemp.stats$year_match):max(btemp.stats$year_match)) {
     thisyear.minT.lat = btempyear[btempyear$btemp.lat.year.min==thisyear.minT.iso,]$y[1] 
     thisyear.maxT.lat = btempyear[btempyear$btemp.lat.year.max==thisyear.maxT.iso,]$y[1] 
     tempdf = as.data.frame(cbind(commonname, spp.maxT.baseline, spp.minT.baseline, spp.meanT.baseline, thisyear.meanT.lat, thisyear.maxT.lat, thisyear.minT.lat, year))
-    isodf = rbind(isodf, tempdf)
+    out = rbind(out, tempdf)
     rm(btempyear, thisyear.minT.lat, thisyear.meanT.lat, thisyear.maxT.lat, thisyear.maxT.iso, thisyear.meanT.iso, thisyear.minT.iso)
   }
 }
+
+isodf <- as.data.frame(out) %>% 
+  mutate(
+    spp.maxT.baseline = as.numeric(as.character(spp.maxT.baseline)),
+    spp.minT.baseline = as.numeric(as.character(spp.minT.baseline)),
+    spp.meanT.baseline = as.numeric(as.character(spp.meanT.baseline)),
+    thisyear.minT.lat = as.numeric(as.character(thisyear.minT.lat)),
+    thisyear.meanT.lat = as.numeric(as.character(thisyear.meanT.lat)),
+    thisyear.maxT.lat = as.numeric(as.character(thisyear.maxT.lat))
+  )
 
 poldat.stats.iso <- poldat.stats %>% 
   mutate(year=as.factor(year)) %>% 
