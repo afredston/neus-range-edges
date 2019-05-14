@@ -67,19 +67,28 @@ soda_df <- raster::as.data.frame(soda_neus, xy=TRUE, long=TRUE) %>%
          ) %>% 
   dplyr::select(-layer) %>% 
   rename(btemp = value) %>% 
-  filter(!is.na(btemp)) 
+  filter(!is.na(btemp)) %>% 
+  mutate(year_measured = ifelse(month %in% c(1,2), year-1, year),
+         year_match = year_measured + 1) 
+# the trawl survey data is from spring (starts in april), and the coldest temperatures are often found in early spring
+# so it's not appropriate to compare a survey from spring in one year to either all temperatures in that calendar year or last year
+# rather, we're "redefining" the year to run from march to february, and then comparing edge position to the previous 12 months of temperaturue data 
 
 soda_stats <- soda_df %>% 
-  group_by(year) %>% 
+  group_by(year_measured) %>% 
   mutate(
-    btemp.year = mean(btemp)
+    btemp.year.mean = mean(btemp),
+    btemp.year.max = max(btemp),
+    btemp.year.min = min(btemp)
   ) %>% 
   ungroup() %>% 
-  group_by(year, y) %>% 
+  group_by(year_measured, y) %>% 
   mutate(
-    btemp.lat.year = mean(btemp)
+    btemp.lat.year.mean = mean(btemp),
+    btemp.lat.year.max = max(btemp),
+    btemp.lat.year.min = min(btemp) 
     ) %>% 
-  ungroup()
+  ungroup() 
 
 write_rds(soda_stats, here("processed-data","soda_stats.rds"))
 rm(list=ls())

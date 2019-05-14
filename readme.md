@@ -10,4 +10,5 @@ Scripts should be run in the following order:
 1. `clean_trawl_data.R`
 1. `coastline_length.R`
 1. `calculate_edges.R`
+1. `isotherms.R`
 1. `analyze_edges.R`
