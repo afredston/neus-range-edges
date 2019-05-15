@@ -11,12 +11,78 @@ mutate(year = as.numeric(year))
 eqdat.stats.iso <- readRDS(here("processed-data","eqdat.stats.iso.rds")) %>% 
   mutate(year = as.numeric(year)) 
 
-btemp.stats <- readRDS(here("processed-data","soda_stats.rds")) %>% 
+soda.stats <- readRDS(here("processed-data","soda_stats.rds")) %>% 
   filter(year_match > 1980) 
 
-btemp.stats.overall <- btemp.stats %>% 
-  dplyr::select(btemp.year.mean, btemp.year.min, btemp.year.max, year_match) %>% 
+soda.stats.summary <- soda.stats %>% 
+  dplyr::select(year_match, year.month.mean, year.month.max, year.month.sd, year.month.min) %>% 
+  distinct() # get rid of lat-specific stats
+
+hadisst.stats <- readRDS(here("processed-data","hadisst_stats.rds")) %>% 
+  filter(year_match > 1968) 
+
+hadisst.stats.summary <- hadisst.stats %>% 
+  dplyr::select(year_match, year.month.mean, year.month.max, year.month.sd, year.month.min) %>% 
+  distinct() # get rid of lat-specific stats
+
+oisst.extremes <- readRDS(here("processed-data","oisst_neus.rds")) %>% 
+  filter(year_measured > 1981) %>% 
+  group_by(year_measured) %>% 
+  mutate(
+    year.daily.99 = quantile(sst, 0.99),
+    year.daily.01 = quantile(sst, 0.01)
+  ) %>% 
+  ungroup() %>% 
+  dplyr::select(year_measured, year.daily.99, year.daily.01) %>% 
   distinct()
+
+#################
+# LM: temperatures ~ time 
+#################
+
+hadisst.lm.mean <- hadisst.stats %>% 
+  dplyr::select(year_measured, year.month.mean, year.month.max, year.month.sd, year.month.min) %>% # use year_measured which refers to the actual year measured not the edge year to match to
+  distinct() %>% 
+  lm(year.month.mean ~ year_measured, data=.) %>% 
+  summary()
+
+hadisst.lm.max <- hadisst.stats %>% 
+  dplyr::select(year_measured, year.month.mean, year.month.max, year.month.sd, year.month.min) %>% 
+  distinct() %>% 
+  lm(year.month.max ~ year_measured, data=.) %>% 
+  summary()
+
+hadisst.lm.min <- hadisst.stats %>% 
+  dplyr::select(year_measured, year.month.mean, year.month.max, year.month.sd, year.month.min) %>% 
+  distinct() %>% 
+  lm(year.month.min ~ year_measured, data=.) %>% 
+  summary()
+
+soda.lm.mean <- soda.stats %>% 
+  dplyr::select(year_measured, year.month.mean, year.month.max, year.month.sd, year.month.min) %>% 
+  distinct() %>% 
+  lm(year.month.mean ~ year_measured, data=.) %>% 
+  summary()
+
+soda.lm.max <- soda.stats %>% 
+  dplyr::select(year_measured, year.month.mean, year.month.max, year.month.sd, year.month.min) %>% 
+  distinct() %>% 
+  lm(year.month.max ~ year_measured, data=.) %>% 
+  summary()
+
+soda.lm.min <- soda.stats %>% 
+  dplyr::select(year_measured, year.month.mean, year.month.max, year.month.sd, year.month.min) %>% 
+  distinct() %>% 
+  lm(year.month.min ~ year_measured, data=.) %>% 
+  summary()
+
+oisst.lm.min <- oisst.extremes %>% 
+  lm(year.daily.01 ~ year_measured, data = .) %>% 
+  summary()
+
+oisst.lm.max <- oisst.extremes %>% 
+  lm(year.daily.99 ~ year_measured, data = .) %>% 
+  summary()
 
 #################
 # LM: edge ~ time 
@@ -64,8 +130,6 @@ eqdat.corr <- eqdat.stats.iso %>%
     tidied = map(test, tidy)) %>% 
   unnest(tidied, .drop=TRUE) 
 
-
-
 #################
 # LM: assemblage ~ time and temperature   
 #################
@@ -82,20 +146,36 @@ eqdat.assemblage.lm <- eqdat.stats.iso %>%
   lm(assemblage.dist05 ~ year, data = .) %>% 
   summary() 
 
-poldat.btemp <- poldat.stats.iso %>% 
-  left_join(btemp.stats.overall, by=c('year'='year_match')) %>% 
-  filter(!is.na(btemp.year.mean)) %>% 
-  dplyr::select(assemblage.dist95, btemp.year.mean) %>% 
+poldat.btemp.all <- poldat.stats.iso %>% 
+  left_join(soda.stats.summary, by=c('year'='year_match')) %>% 
+  filter(!is.na(year.month.mean)) %>% 
+  dplyr::select(assemblage.dist95, year.month.mean, year.month.max, year.month.min) %>% 
   distinct() %>% 
-  glm(assemblage.dist95 ~ btemp.year.mean, data = .) %>% 
+  glm(assemblage.dist95 ~ year.month.mean + year.month.max + year.month.min, data = .) %>% 
   summary()
 
-eqdat.btemp <- eqdat.stats.iso %>% 
-  left_join(btemp.stats.overall, by=c('year'='year_match')) %>% 
-  filter(!is.na(btemp.year.mean)) %>% 
-  dplyr::select(assemblage.dist05, btemp.year.mean) %>% 
+eqdat.btemp.all <- eqdat.stats.iso %>% 
+  left_join(soda.stats.summary, by=c('year'='year_match')) %>% 
+  filter(!is.na(year.month.mean)) %>% 
+  dplyr::select(assemblage.dist05, year.month.mean, year.month.max, year.month.min) %>% 
   distinct() %>% 
-  lm(assemblage.dist05 ~ btemp.year.mean, data = .) %>% 
+  glm(assemblage.dist05 ~ year.month.mean + year.month.max + year.month.min, data = .) %>% 
+  summary()
+
+poldat.btemp.mean <- poldat.stats.iso %>% 
+  left_join(soda.stats.summary, by=c('year'='year_match')) %>% 
+  filter(!is.na(year.month.mean)) %>% 
+  dplyr::select(assemblage.dist95, year.month.mean, year.month.max, year.month.min) %>% 
+  distinct() %>% 
+  glm(assemblage.dist95 ~ year.month.mean, data = .) %>% 
+  summary()
+
+eqdat.btemp.mean <- eqdat.stats.iso %>% 
+  left_join(soda.stats.summary, by=c('year'='year_match')) %>% 
+  filter(!is.na(year.month.mean)) %>% 
+  dplyr::select(assemblage.dist05, year.month.mean, year.month.max, year.month.min) %>% 
+  distinct() %>% 
+  glm(assemblage.dist05 ~ year.month.mean, data = .) %>% 
   summary()
 
 #################

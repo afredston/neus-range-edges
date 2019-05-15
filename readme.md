@@ -6,9 +6,13 @@ At the moment (May 2019), these scripts rely heavily on the development version 
 
 Scripts should be run in the following order: 
 
+1. `get_sst.R`
+1. `clean_temp_data.R`
 1. `get_trawl_data.R`
 1. `clean_trawl_data.R`
 1. `coastline_length.R`
 1. `calculate_edges.R`
 1. `isotherms.R`
 1. `analyze_edges.R`
+
+Once the scripts above have generated the requisite objects in `processed-data`, then any of the figure files can be run as desired. 
