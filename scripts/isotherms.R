@@ -1,163 +1,367 @@
-# NEED TO REDO THIS SLIGHTLY AFTER UPDATING THE TEMPERATURE DATASETS 
 
-# calculate species-specific isotherm displacement over time 
+# calculate species-specific and regional isotherm displacement over time 
+
+#################
+### LOAD IN PACKAGES
+#################
 
 library(here)
 library(tidyverse)
 library(data.table)
+library(purrr)
+library(broom)
+
+#################
+### READ IN DATASETS
+#################
 
 poldat.stats <- readRDS(here("processed-data","poldat.stats.rds"))
 eqdat.stats <- readRDS(here("processed-data","eqdat.stats.rds")) 
-btemp.stats <- readRDS(here("processed-data","soda_stats.rds")) 
-firstyear.tempdata <- 1980 
+soda.stats <- readRDS(here("processed-data","soda_stats.rds")) 
+oisst.stats <- readRDS(here("processed-data","oisst_stats.rds"))
+hadisst.stats <- readRDS(here("processed-data","hadisst_stats.rds"))
 
-# calculate temperature isotherms occupied by each species based on their first 3 years of occurrence (for which we have temperature data!)
+oisst.neus <- readRDS(here("processed-data","oisst_neus.rds"))
+hadisst.neus <- readRDS(here("processed-data","hadisst_neus.rds"))
+soda.neus <- readRDS(here("processed-data","soda_neus.rds"))
 
-poldat.stats.y1 <- poldat.stats %>% 
-  filter(year>firstyear.tempdata) %>% 
-  group_by(commonname) %>% 
-  arrange(year) %>% 
-  filter(year==year[1]) %>% # first year when species was observed
-  left_join(btemp.stats, by=c('year' = 'year_match', 'spp.lat95round'='y')) %>% 
+#################
+### MAKE LINEAR MODELS AND FUNCTIONS FOR TEMPERATURE DATASETS 
+#################
+
+# gives the equation of a line from which temperatures at any latitude can be calculated 
+
+lm.hadisst <- hadisst.neus %>% 
+  nest(-year_match) %>% 
   mutate(
-    spp.maxT.sample = btemp.lat.year.max, 
-    spp.minT.sample = btemp.lat.year.min, 
-    spp.meanT.sample = btemp.lat.year.mean
+    model = purrr::map(data, ~lm(sst ~ y, data = .x)), 
+    tidymodel = purrr::map(model, tidy)
   ) %>% 
-  dplyr::select(commonname, spp.maxT.sample, spp.minT.sample, spp.meanT.sample) %>%
-  distinct()
-
-poldat.stats.y2 <- poldat.stats %>% 
-  filter(year>firstyear.tempdata) %>% 
-  group_by(commonname) %>% 
-  arrange(year) %>% 
-  filter(year==year[2]) %>% 
-  left_join(btemp.stats, by=c('year' = 'year_match', 'spp.lat95round'='y')) %>% 
-  mutate(
-    spp.maxT.sample = btemp.lat.year.max, 
-    spp.minT.sample = btemp.lat.year.min, 
-    spp.meanT.sample = btemp.lat.year.mean
-  ) %>% 
-  dplyr::select(commonname, spp.maxT.sample, spp.minT.sample, spp.meanT.sample) %>%
-  distinct()
-
-poldat.stats.y3 <- poldat.stats %>% 
-  filter(year>firstyear.tempdata) %>% 
-  group_by(commonname) %>% 
-  arrange(year) %>% 
-  filter(year==year[3]) %>% 
-  left_join(btemp.stats, by=c('year' = 'year_match', 'spp.lat95round'='y')) %>% 
-  mutate(
-    spp.maxT.sample = btemp.lat.year.max, 
-    spp.minT.sample = btemp.lat.year.min, 
-    spp.meanT.sample = btemp.lat.year.mean
-  ) %>% 
-  dplyr::select(commonname, spp.maxT.sample, spp.minT.sample, spp.meanT.sample) %>%
-  distinct()
-
-poldat.iso.baseline <- rbind(poldat.stats.y1, poldat.stats.y2, poldat.stats.y3) %>% 
-  group_by(commonname) %>% 
-  mutate(spp.maxT.baseline = mean(spp.maxT.sample),
-         spp.meanT.baseline = mean(spp.meanT.sample),
-         spp.minT.baseline = mean(spp.minT.sample)) %>% 
-  ungroup() %>% 
-  dplyr::select(commonname, spp.maxT.baseline, spp.minT.baseline, spp.meanT.baseline) %>% 
-  distinct()
-
-eqdat.stats.y1 <- eqdat.stats %>% 
-  filter(year>firstyear.tempdata) %>% 
-  group_by(commonname) %>% 
-  arrange(year) %>% 
-  filter(year==year[1]) %>% # first year when species was observed
-  left_join(btemp.stats, by=c('year' = 'year_match', 'spp.lat05round'='y')) %>% 
-  mutate(
-    spp.maxT.sample = btemp.lat.year.max, 
-    spp.minT.sample = btemp.lat.year.min, 
-    spp.meanT.sample = btemp.lat.year.mean
-  ) %>% 
-  dplyr::select(commonname, spp.maxT.sample, spp.minT.sample, spp.meanT.sample) %>%
-  distinct()
-
-eqdat.stats.y2 <- eqdat.stats %>% 
-  filter(year>firstyear.tempdata) %>% 
-  group_by(commonname) %>% 
-  arrange(year) %>% 
-  filter(year==year[2]) %>% 
-  left_join(btemp.stats, by=c('year' = 'year_match', 'spp.lat05round'='y')) %>% 
-  mutate(
-    spp.maxT.sample = btemp.lat.year.max, 
-    spp.minT.sample = btemp.lat.year.min, 
-    spp.meanT.sample = btemp.lat.year.mean
-  ) %>% 
-  dplyr::select(commonname, spp.maxT.sample, spp.minT.sample, spp.meanT.sample) %>%
-  distinct()
-
-eqdat.stats.y3 <- eqdat.stats %>% 
-  filter(year>firstyear.tempdata) %>% 
-  group_by(commonname) %>% 
-  arrange(year) %>% 
-  filter(year==year[3]) %>% 
-  left_join(btemp.stats, by=c('year' = 'year_match', 'spp.lat05round'='y')) %>% 
-  mutate(
-    spp.maxT.sample = btemp.lat.year.max, 
-    spp.minT.sample = btemp.lat.year.min, 
-    spp.meanT.sample = btemp.lat.year.mean
-  ) %>% 
-  dplyr::select(commonname, spp.maxT.sample, spp.minT.sample, spp.meanT.sample) %>%
-  distinct()
-
-eqdat.iso.baseline <- rbind(eqdat.stats.y1, eqdat.stats.y2, eqdat.stats.y3) %>% 
-  group_by(commonname) %>% 
-  mutate(spp.maxT.baseline = mean(spp.maxT.sample),
-         spp.meanT.baseline = mean(spp.meanT.sample),
-         spp.minT.baseline = mean(spp.minT.sample)) %>% 
-  ungroup() %>% 
-  dplyr::select(commonname, spp.maxT.baseline, spp.minT.baseline, spp.meanT.baseline) %>% 
-  distinct()
-
-# match species thermal preferences to positions of isotherms in soda
-
-iso.baseline <- rbind(eqdat.iso.baseline, poldat.iso.baseline)
-
-out <- NULL
-for(i in min(btemp.stats$year_match):max(btemp.stats$year_match)) {
-  for(j in 1:length(iso.baseline$commonname)) {
-    commonname = iso.baseline$commonname[j]
-    spp.maxT.baseline = iso.baseline[j,]$spp.maxT.baseline
-    spp.minT.baseline = iso.baseline[j,]$spp.minT.baseline
-    spp.meanT.baseline = iso.baseline[j,]$spp.meanT.baseline
-    year = i
-    btempyear = btemp.stats[btemp.stats$year_match==year,]
-    thisyear.meanT.iso = sapply(spp.meanT.baseline, function(x) btempyear$btemp.lat.year.mean[order(abs(x-btempyear$btemp.lat.year.mean))][1]) # in that year, find the closest matching temperature to the species preference  
-    thisyear.maxT.iso = sapply(spp.maxT.baseline, function(x) btempyear$btemp.lat.year.max[order(abs(x-btempyear$btemp.lat.year.max))][1])  
-    thisyear.minT.iso = sapply(spp.minT.baseline, function(x) btempyear$btemp.lat.year.min[order(abs(x-btempyear$btemp.lat.year.min))][1]) 
-    thisyear.meanT.lat = btempyear[btempyear$btemp.lat.year.mean==thisyear.meanT.iso,]$y[1] # find the latitude of the closest matching temperature 
-    thisyear.minT.lat = btempyear[btempyear$btemp.lat.year.min==thisyear.minT.iso,]$y[1] 
-    thisyear.maxT.lat = btempyear[btempyear$btemp.lat.year.max==thisyear.maxT.iso,]$y[1] 
-    tempdf = as.data.frame(cbind(commonname, spp.maxT.baseline, spp.minT.baseline, spp.meanT.baseline, thisyear.meanT.lat, thisyear.maxT.lat, thisyear.minT.lat, year))
-    out = rbind(out, tempdf)
-    rm(btempyear, thisyear.minT.lat, thisyear.meanT.lat, thisyear.maxT.lat, thisyear.maxT.iso, thisyear.meanT.iso, thisyear.minT.iso)
-  }
+  unnest(tidymodel, .drop=TRUE) 
+get.had.lat <- function(temp, year) {
+  tmp <- lm.hadisst[lm.hadisst$year_match==year,]
+  out <- (temp-tmp[[1,3]])/tmp[[2,3]]
+  return(out)
+}
+get.had.temp <- function(lat, year) {
+  tmp <- lm.hadisst[lm.hadisst$year_match==year,]
+  out <- lat*tmp[[2,3]]+tmp[[1,3]]
+  return(out)
 }
 
-isodf <- as.data.frame(out) %>% 
+lm.soda <- soda.neus %>% 
+  nest(-year_match) %>% 
   mutate(
-    spp.maxT.baseline = as.numeric(as.character(spp.maxT.baseline)),
-    spp.minT.baseline = as.numeric(as.character(spp.minT.baseline)),
-    spp.meanT.baseline = as.numeric(as.character(spp.meanT.baseline)),
-    thisyear.minT.lat = as.numeric(as.character(thisyear.minT.lat)),
-    thisyear.meanT.lat = as.numeric(as.character(thisyear.meanT.lat)),
-    thisyear.maxT.lat = as.numeric(as.character(thisyear.maxT.lat))
-  )
+    model = purrr::map(data, ~lm(btemp ~ y, data = .x)), 
+    tidymodel = purrr::map(model, tidy)
+  ) %>% 
+  unnest(tidymodel, .drop=TRUE)
+get.soda.lat <- function(temp, year) {
+  tmp <- lm.soda[lm.soda$year_match==year,]
+  out <- (temp-tmp[[1,3]])/tmp[[2,3]]
+  return(out)
+}
+get.soda.temp <- function(lat, year) {
+  tmp <- lm.soda[lm.soda$year_match==year,]
+  out <- lat*tmp[[2,3]]+tmp[[1,3]]
+  return(out)
+}
 
-poldat.stats.iso <- poldat.stats %>% 
-  mutate(year=as.factor(year)) %>% 
-  left_join(isodf, by=c("commonname","year")) 
-# note that the year match has already occurred, so the "year" value can now be used for analysis and the edge position will be matched to last year's temperature values 
+lm.oisst <- oisst.neus %>% 
+  nest(-year_match) %>% 
+  mutate(
+    model = purrr::map(data, ~lm(sst ~ y, data = .x)), 
+    tidymodel = purrr::map(model, tidy)
+  ) %>% 
+  unnest(tidymodel, .drop=TRUE)
+
+#################
+### INTEGER AND ASSEMBLAGE ISOTHERMS
+#################
+
+# this script is a nightmare and doesn't work
+
+# get.soda.lat2 <- function(temp, year) {
+#   tmp <- lm.soda[lm.soda$year_match==year,]
+#   out <- (temp-tmp[[1,3]])/tmp[[2,3]]
+#   return(out)
+# }
+# 
+# degrees <- seq(8, 16, 2)
+# sodayrs <- min(soda.stats$year_measured):max(soda.stats$year_measured)
+# cross <- cross2(degrees, sodayrs)
+# expand <- expand.grid(degrees, sodayrs)
+# mapply(get.soda.lat, expand$Var1, expand$Var2)
+# 
+# out <- degrees %>% 
+#   map(., get.soda.lat, sodayrs) %>% 
+#   unlist()
+# 
+# map2(expand$Var1, expand$Var2, get.soda.lat)
+# 
+# data <- list(
+#   degrees <- seq(8, 16, 2),
+#   sodayrs <- min(soda.stats$year_measured):max(soda.stats$year_measured)
+# ) %>% 
+#   cross() %>% 
+#   map2(lift(get.soda.lat))
+
+
+#################
+### SPECIES-SPECIFIC ISOTHERMS 
+#################
+
+# matching range edges to isotherms
+
+# SODA first
+
+# prep species data 
+
+eqdat.iso.soda.prep <- eqdat.stats %>% 
+  filter(year >= min(soda.neus$year_match)) %>% 
+  group_by(latinname) %>% 
+  arrange(year) %>% 
+  slice(1:3) %>% # get first 3 years that species is observed
+  ungroup()
+
+# calculate temperature values for first three years when species was observed, using the linear model for each dataset and each year 
+
+eqdat.iso.soda.prep2 <- NULL
+
+for(i in unique(eqdat.iso.soda.prep$latinname)) {
+  year.range <- eqdat.iso.soda.prep[eqdat.iso.soda.prep$latinname==i,]$year
+  for(j in year.range) {
+  spp.lat05 <- eqdat.iso.soda.prep[eqdat.iso.soda.prep$year==j & eqdat.iso.soda.prep$latinname==i,]$spp.lat05
+  est.soda <- get.soda.temp(spp.lat05, j)
+  out <- cbind(i, j, spp.lat05, est.soda)
+  eqdat.iso.soda.prep2 <- rbind(out, eqdat.iso.soda.prep2)
+  }
+  rm(i, j, year.range, spp.lat05, est.soda, out)}
+
+# tidy data frame to get the baseline temperature values for each species
+eqdat.iso.soda.prep3 <- eqdat.iso.soda.prep2 %>% 
+  as.data.frame() %>% 
+  rename(latinname=i, year=j) %>% 
+  group_by(latinname) %>% 
+  mutate(est.soda = as.numeric(as.character(est.soda)), 
+    est.edge.temp.soda = mean(est.soda)) %>% 
+  dplyr::select(latinname, est.edge.temp.soda) %>% 
+  ungroup() %>% 
+  distinct() %>% 
+  full_join(eqdat.stats, by="latinname") %>% 
+  filter(year >= min(soda.neus$year_match))
+
+# calculate future latitudes for the species-specific isotherms
+
+eqdat.iso.soda.prep4 <- NULL
+
+for(i in unique(eqdat.iso.soda.prep3$latinname)) {
+  year.range <- eqdat.iso.soda.prep3[eqdat.iso.soda.prep3$latinname==i,]$year 
+  est.edge.temp.soda <- eqdat.iso.soda.prep3 %>% filter(latinname==i) %>% group_by(latinname) %>% dplyr::select(est.edge.temp.soda) %>% distinct() %>% pull()
+  for(j in year.range) {
+    est.edge.lat.soda <- get.soda.lat(est.edge.temp.soda, j)
+    out <- cbind(i, j, est.edge.lat.soda, est.edge.temp.soda)
+    eqdat.iso.soda.prep4 <- rbind(out, eqdat.iso.soda.prep4)
+  }
+  rm(i, j, year.range, est.edge.temp.soda, est.edge.lat.soda, out)
+}
+
+eqdat.iso.soda.prep5 <- 
+  eqdat.iso.soda.prep4 %>% 
+  as.data.frame() %>% 
+  rename(latinname=i, year=j) %>% 
+  mutate(latinname = as.character(latinname),
+         year = as.integer(as.character(year)),
+         est.edge.lat.soda = as.numeric(as.character(est.edge.lat.soda))) 
+
+# now HADISST
+
+# prep species data 
+
+eqdat.iso.had.prep <- eqdat.stats %>% 
+  filter(year >= min(hadisst.neus$year_match)) %>% 
+  group_by(latinname) %>% 
+  arrange(year) %>% 
+  slice(1:3) %>% # get first 3 years that species is observed
+  ungroup()
+
+# calculate temperature values for first three years when species was observed, using the linear model for each dataset and each year 
+
+eqdat.iso.had.prep2 <- NULL
+
+for(i in unique(eqdat.iso.had.prep$latinname)) {
+  year.range <- eqdat.iso.had.prep[eqdat.iso.had.prep$latinname==i,]$year
+  for(j in year.range) {
+    spp.lat05 <- eqdat.iso.had.prep[eqdat.iso.had.prep$year==j & eqdat.iso.had.prep$latinname==i,]$spp.lat05
+    est.had <- get.had.temp(spp.lat05, j)
+    out <- cbind(i, j, spp.lat05, est.had)
+    eqdat.iso.had.prep2 <- rbind(out, eqdat.iso.had.prep2)
+  }
+  rm(i, j, year.range, spp.lat05, est.had, out)}
+
+# tidy data frame to get the baseline temperature values for each species
+eqdat.iso.had.prep3 <- eqdat.iso.had.prep2 %>% 
+  as.data.frame() %>% 
+  rename(latinname=i, year=j) %>% 
+  group_by(latinname) %>% 
+  mutate(est.had = as.numeric(as.character(est.had)), 
+         est.edge.temp.hadisst = mean(est.had)) %>% 
+  dplyr::select(latinname, est.edge.temp.hadisst) %>% 
+  ungroup() %>% 
+  distinct() %>% 
+  full_join(eqdat.stats, by="latinname") %>% 
+  filter(year >= min(hadisst.neus$year_match))
+
+# calculate future latitudes for the species-specific isotherms
+
+eqdat.iso.had.prep4 <- NULL
+
+for(i in unique(eqdat.iso.had.prep3$latinname)) {
+  year.range <- eqdat.iso.had.prep3[eqdat.iso.had.prep3$latinname==i,]$year 
+  est.edge.temp.hadisst <- eqdat.iso.had.prep3 %>% filter(latinname==i) %>% group_by(latinname) %>% dplyr::select(est.edge.temp.hadisst) %>% distinct() %>% pull()
+  for(j in year.range) {
+    est.edge.lat.hadisst <- get.had.lat(est.edge.temp.hadisst, j)
+    out <- cbind(i, j, est.edge.lat.hadisst, est.edge.temp.hadisst)
+    eqdat.iso.had.prep4 <- rbind(out, eqdat.iso.had.prep4)
+  }
+  rm(i, j, year.range, est.edge.temp.hadisst, est.edge.lat.hadisst, out)
+}
+
+eqdat.iso.had.prep5 <- 
+  eqdat.iso.had.prep4 %>% 
+  as.data.frame() %>% 
+  rename(latinname=i, year=j) %>% 
+  mutate(latinname = as.character(latinname),
+         year = as.integer(as.character(year)),
+         est.edge.lat.hadisst = as.numeric(as.character(est.edge.lat.hadisst)))
 
 eqdat.stats.iso <- eqdat.stats %>% 
-  mutate(year=as.factor(year)) %>% 
-  left_join(isodf, by=c("commonname","year")) 
+  left_join(eqdat.iso.had.prep5, by=c('year','latinname')) %>% 
+  left_join(eqdat.iso.soda.prep5, by=c('year','latinname'))
+
+# now poleward edge group
+
+poldat.iso.soda.prep <- poldat.stats %>% 
+  filter(year >= min(soda.neus$year_match)) %>% 
+  group_by(latinname) %>% 
+  arrange(year) %>% 
+  slice(1:3) %>% # get first 3 years that species is observed
+  ungroup()
+
+# calculate temperature values for first three years when species was observed, using the linear model for each dataset and each year 
+
+poldat.iso.soda.prep2 <- NULL
+
+for(i in unique(poldat.iso.soda.prep$latinname)) {
+  year.range <- poldat.iso.soda.prep[poldat.iso.soda.prep$latinname==i,]$year
+  for(j in year.range) {
+    spp.lat95 <- poldat.iso.soda.prep[poldat.iso.soda.prep$year==j & poldat.iso.soda.prep$latinname==i,]$spp.lat95
+    est.soda <- get.soda.temp(spp.lat95, j)
+    out <- cbind(i, j, spp.lat95, est.soda)
+    poldat.iso.soda.prep2 <- rbind(out, poldat.iso.soda.prep2)
+  }
+  rm(i, j, year.range, spp.lat95, est.soda, out)}
+
+# tidy data frame to get the baseline temperature values for each species
+poldat.iso.soda.prep3 <- poldat.iso.soda.prep2 %>% 
+  as.data.frame() %>% 
+  rename(latinname=i, year=j) %>% 
+  group_by(latinname) %>% 
+  mutate(est.soda = as.numeric(as.character(est.soda)), 
+         est.edge.temp.soda = mean(est.soda)) %>% 
+  dplyr::select(latinname, est.edge.temp.soda) %>% 
+  ungroup() %>% 
+  distinct() %>% 
+  full_join(poldat.stats, by="latinname") %>% 
+  filter(year >= min(soda.neus$year_match))
+
+# calculate future latitudes for the species-specific isotherms
+
+poldat.iso.soda.prep4 <- NULL
+
+for(i in unique(poldat.iso.soda.prep3$latinname)) {
+  year.range <- poldat.iso.soda.prep3[poldat.iso.soda.prep3$latinname==i,]$year 
+  est.edge.temp.soda <- poldat.iso.soda.prep3 %>% filter(latinname==i) %>% group_by(latinname) %>% dplyr::select(est.edge.temp.soda) %>% distinct() %>% pull()
+  for(j in year.range) {
+    est.edge.lat.soda <- get.soda.lat(est.edge.temp.soda, j)
+    out <- cbind(i, j, est.edge.lat.soda, est.edge.temp.soda)
+    poldat.iso.soda.prep4 <- rbind(out, poldat.iso.soda.prep4)
+  }
+  rm(i, j, year.range, est.edge.temp.soda, est.edge.lat.soda, out)
+}
+
+poldat.iso.soda.prep5 <- 
+  poldat.iso.soda.prep4 %>% 
+  as.data.frame() %>% 
+  rename(latinname=i, year=j) %>% 
+  mutate(latinname = as.character(latinname),
+         year = as.integer(as.character(year)),
+         est.edge.lat.soda = as.numeric(as.character(est.edge.lat.soda))) 
+
+# now HADISST
+
+# prep species data 
+
+poldat.iso.had.prep <- poldat.stats %>% 
+  filter(year >= min(hadisst.neus$year_match)) %>% 
+  group_by(latinname) %>% 
+  arrange(year) %>% 
+  slice(1:3) %>% # get first 3 years that species is observed
+  ungroup()
+
+# calculate temperature values for first three years when species was observed, using the linear model for each dataset and each year 
+
+poldat.iso.had.prep2 <- NULL
+
+for(i in unique(poldat.iso.had.prep$latinname)) {
+  year.range <- poldat.iso.had.prep[poldat.iso.had.prep$latinname==i,]$year
+  for(j in year.range) {
+    spp.lat95 <- poldat.iso.had.prep[poldat.iso.had.prep$year==j & poldat.iso.had.prep$latinname==i,]$spp.lat95
+    est.had <- get.had.temp(spp.lat95, j)
+    out <- cbind(i, j, spp.lat95, est.had)
+    poldat.iso.had.prep2 <- rbind(out, poldat.iso.had.prep2)
+  }
+  rm(i, j, year.range, spp.lat95, est.had, out)}
+
+# tidy data frame to get the baseline temperature values for each species
+poldat.iso.had.prep3 <- poldat.iso.had.prep2 %>% 
+  as.data.frame() %>% 
+  rename(latinname=i, year=j) %>% 
+  group_by(latinname) %>% 
+  mutate(est.had = as.numeric(as.character(est.had)), 
+         est.edge.temp.hadisst = mean(est.had)) %>% 
+  dplyr::select(latinname, est.edge.temp.hadisst) %>% 
+  ungroup() %>% 
+  distinct() %>% 
+  full_join(poldat.stats, by="latinname") %>% 
+  filter(year >= min(hadisst.neus$year_match))
+
+# calculate future latitudes for the species-specific isotherms
+
+poldat.iso.had.prep4 <- NULL
+
+for(i in unique(poldat.iso.had.prep3$latinname)) {
+  year.range <- poldat.iso.had.prep3[poldat.iso.had.prep3$latinname==i,]$year 
+  est.edge.temp.hadisst <- poldat.iso.had.prep3 %>% filter(latinname==i) %>% group_by(latinname) %>% dplyr::select(est.edge.temp.hadisst) %>% distinct() %>% pull()
+  for(j in year.range) {
+    est.edge.lat.hadisst <- get.had.lat(est.edge.temp.hadisst, j)
+    out <- cbind(i, j, est.edge.lat.hadisst, est.edge.temp.hadisst)
+    poldat.iso.had.prep4 <- rbind(out, poldat.iso.had.prep4)
+  }
+  rm(i, j, year.range, est.edge.temp.hadisst, est.edge.lat.hadisst, out)
+}
+
+poldat.iso.had.prep5 <- 
+  poldat.iso.had.prep4 %>% 
+  as.data.frame() %>% 
+  rename(latinname=i, year=j) %>% 
+  mutate(latinname = as.character(latinname),
+         year = as.integer(as.character(year)),
+         est.edge.lat.hadisst = as.numeric(as.character(est.edge.lat.hadisst)))
+
+poldat.stats.iso <- poldat.stats %>% 
+  left_join(poldat.iso.had.prep5, by=c('year','latinname')) %>% 
+  left_join(poldat.iso.soda.prep5, by=c('year','latinname'))
 
 write_rds(poldat.stats.iso, here("processed-data","poldat.stats.iso.rds"))
 write_rds(eqdat.stats.iso, here("processed-data","eqdat.stats.iso.rds"))
