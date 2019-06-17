@@ -51,7 +51,8 @@ hadisst.neus <- read_rds(here("processed-data","hadisst_raw.rds")) %>%
     month = lubridate::month(time)
   ) %>% 
   mutate(year_measured = ifelse(month %in% c(1,2), year-1, year),
-         year_match = year_measured + 1)
+         year_match = year_measured + 1) %>% 
+  filter(year_match > min(year_match))
 # the trawl survey data is from spring (starts in april), and the coldest temperatures are often found in early spring
 # so it's not appropriate to compare a survey from spring in one year to either all temperatures in that calendar year or last year
 # rather, we're "redefining" the year to run from march to february, and then comparing edge position to the previous 12 months of temperaturue data 
@@ -69,7 +70,8 @@ oisst.neus <- read_rds(here("processed-data","oisst_raw.rds")) %>%
     month = lubridate::month(time)
   ) %>% 
   mutate(year_measured = ifelse(month %in% c(1,2), year-1, year),
-         year_match = year_measured + 1)
+         year_match = year_measured + 1) %>% 
+  filter(year_match > min(year_match))
 
 # different because this one is a .nc file
 soda.neus <- raster::stack(here("data", "soda3.4.2_mn_ocean_reg_bottemp.nc")) %>% 
@@ -87,7 +89,8 @@ soda.neus <- raster::stack(here("data", "soda3.4.2_mn_ocean_reg_bottemp.nc")) %>
   rename(btemp = value) %>% 
   filter(!is.na(btemp)) %>% 
   mutate(year_measured = ifelse(month %in% c(1,2), year-1, year),
-         year_match = year_measured + 1) 
+         year_match = year_measured + 1) %>% 
+  filter(year_match > min(year_match)) # ditch year_match=1980; it is disingenuous because it is actually only the first 3 months of the previous year
 
 # save files--they are slow to generate!
 write_rds(oisst.neus, here("processed-data","oisst_neus.rds"))

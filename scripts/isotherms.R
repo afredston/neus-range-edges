@@ -83,10 +83,10 @@ get.soda.temp <- function(lat, year) {
 
 #equatorward SODA
 eqdat.assembl.iso.soda.prep <- eqdat.stats %>% 
-  filter(year == min(soda.neus$year_match)) %>%  # keep only the earliest year for baseline value 
+  filter(year == min(soda.neus$year_match)) %>% 
   dplyr::select(assemblage.lat05, year) %>% 
   distinct() %>% 
-  mutate(est.edge.temp.soda = get.soda.temp(assemblage.lat05, year)) 
+  mutate(est.edge.temp.soda = get.soda.temp(assemblage.lat05, year))
 
 eqdat.assembl.iso.soda <- eqdat.stats %>% 
   filter(year >= min(soda.neus$year_match)) %>% 
@@ -98,7 +98,7 @@ eqdat.assembl.iso.soda <- eqdat.stats %>%
 
 # equatorward hadISST
 eqdat.assembl.iso.had.prep <- eqdat.stats %>% 
-  filter(year == min(hadisst.neus$year_match)) %>%  # keep only the earliest year for baseline value 
+  filter(year == min(hadisst.neus$year_match)) %>%  
   dplyr::select(assemblage.lat05, year) %>% 
   distinct() %>% 
   mutate(est.edge.temp.had = get.had.temp(assemblage.lat05, year)) 
