@@ -208,8 +208,25 @@ eqdat.stemp.lme <- eqdat.stats.iso %>%
   distinct() %>% 
   lmer(spp.dist05 ~ year.month.mean + (1|commonname), data = .) 
 
+
 #################
-# LM: edge ~ isotherm 
+# LM: assemblage edge ~ isotherm 
+#################
+
+eqdat.iso.all <- eqdat.stats.iso %>% 
+  dplyr::select(assemblage.lat05, assemblage.edge.lat.soda) %>% 
+  distinct() %>% 
+  lm(assemblage.lat05 ~ assemblage.edge.lat.soda, data=.) %>% 
+  summary()
+
+poldat.iso.all <- poldat.stats.iso %>% 
+  dplyr::select(assemblage.lat95, assemblage.edge.lat.soda) %>% 
+  distinct() %>% 
+  lm(assemblage.lat95 ~ assemblage.edge.lat.soda, data=.) %>% 
+  summary()
+
+#################
+# LM: species edge ~ isotherm 
 #################
 
 eqdat.iso.lm <- eqdat.stats.iso %>% 

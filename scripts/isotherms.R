@@ -18,10 +18,10 @@ library(broom)
 poldat.stats <- readRDS(here("processed-data","poldat.stats.rds"))
 eqdat.stats <- readRDS(here("processed-data","eqdat.stats.rds")) 
 soda.stats <- readRDS(here("processed-data","soda_stats.rds")) 
-oisst.stats <- readRDS(here("processed-data","oisst_stats.rds"))
+# oisst.stats <- readRDS(here("processed-data","oisst_stats.rds"))
 hadisst.stats <- readRDS(here("processed-data","hadisst_stats.rds"))
 
-oisst.neus <- readRDS(here("processed-data","oisst_neus.rds"))
+# oisst.neus <- readRDS(here("processed-data","oisst_neus.rds"))
 hadisst.neus <- readRDS(here("processed-data","hadisst_neus.rds"))
 soda.neus <- readRDS(here("processed-data","soda_neus.rds"))
 
@@ -67,18 +67,79 @@ get.soda.temp <- function(lat, year) {
   return(out)
 }
 
-lm.oisst <- oisst.neus %>% 
-  nest(-year_match) %>% 
-  mutate(
-    model = purrr::map(data, ~lm(sst ~ y, data = .x)), 
-    tidymodel = purrr::map(model, tidy)
-  ) %>% 
-  unnest(tidymodel, .drop=TRUE)
+# lm.oisst <- oisst.neus %>% 
+#   nest(-year_match) %>% 
+#   mutate(
+#     model = purrr::map(data, ~lm(sst ~ y, data = .x)), 
+#     tidymodel = purrr::map(model, tidy)
+#   ) %>% 
+#   unnest(tidymodel, .drop=TRUE)
 
 #################
 ### INTEGER AND ASSEMBLAGE ISOTHERMS
 #################
 
+# assemblages
+
+#equatorward SODA
+eqdat.assembl.iso.soda.prep <- eqdat.stats %>% 
+  filter(year == min(soda.neus$year_match)) %>%  # keep only the earliest year for baseline value 
+  dplyr::select(assemblage.lat05, year) %>% 
+  distinct() %>% 
+  mutate(est.edge.temp.soda = get.soda.temp(assemblage.lat05, year)) 
+
+eqdat.assembl.iso.soda <- eqdat.stats %>% 
+  filter(year >= min(soda.neus$year_match)) %>% 
+  dplyr::select(year, assemblage.lat05) %>% 
+  distinct() %>% 
+  mutate(assemblage.edge.temp.soda = eqdat.assembl.iso.soda.prep$est.edge.temp.soda) %>% 
+  rowwise() %>% 
+  mutate(assemblage.edge.lat.soda = get.soda.lat(assemblage.edge.temp.soda, year))
+
+# equatorward hadISST
+eqdat.assembl.iso.had.prep <- eqdat.stats %>% 
+  filter(year == min(hadisst.neus$year_match)) %>%  # keep only the earliest year for baseline value 
+  dplyr::select(assemblage.lat05, year) %>% 
+  distinct() %>% 
+  mutate(est.edge.temp.had = get.had.temp(assemblage.lat05, year)) 
+
+eqdat.assembl.iso.had <- eqdat.stats %>% 
+  filter(year >= min(hadisst.neus$year_match)) %>% 
+  dplyr::select(year, assemblage.lat05) %>% 
+  distinct() %>% 
+  mutate(assemblage.edge.temp.hadisst = eqdat.assembl.iso.had.prep$est.edge.temp.had) %>% 
+  rowwise() %>% 
+  mutate(assemblage.edge.lat.hadisst = get.had.lat(assemblage.edge.temp.hadisst, year))
+
+# poleward SODA
+poldat.assembl.iso.soda.prep <- poldat.stats %>% 
+  filter(year == min(soda.neus$year_match)) %>%  # keep only the earliest year for baseline value 
+  dplyr::select(assemblage.lat95, year) %>% 
+  distinct() %>% 
+  mutate(est.edge.temp.soda = get.soda.temp(assemblage.lat95, year)) 
+
+poldat.assembl.iso.soda <- poldat.stats %>% 
+  filter(year >= min(soda.neus$year_match)) %>% 
+  dplyr::select(year, assemblage.lat95) %>% 
+  distinct() %>% 
+  mutate(assemblage.edge.temp.soda = poldat.assembl.iso.soda.prep$est.edge.temp.soda) %>% 
+  rowwise() %>% 
+  mutate(assemblage.edge.lat.soda = get.soda.lat(assemblage.edge.temp.soda, year))
+
+# poleward hadISST
+poldat.assembl.iso.had.prep <- poldat.stats %>% 
+  filter(year == min(hadisst.neus$year_match)) %>%  # keep only the earliest year for baseline value 
+  dplyr::select(assemblage.lat95, year) %>% 
+  distinct() %>% 
+  mutate(est.edge.temp.had = get.had.temp(assemblage.lat95, year)) 
+
+poldat.assembl.iso.had <- poldat.stats %>% 
+  filter(year >= min(hadisst.neus$year_match)) %>% 
+  dplyr::select(year, assemblage.lat95) %>% 
+  distinct() %>% 
+  mutate(assemblage.edge.temp.hadisst = poldat.assembl.iso.had.prep$est.edge.temp.had) %>% 
+  rowwise() %>% 
+  mutate(assemblage.edge.lat.hadisst = get.had.lat(assemblage.edge.temp.hadisst, year))
 # this script is a nightmare and doesn't work
 
 # get.soda.lat2 <- function(temp, year) {
@@ -237,7 +298,9 @@ eqdat.iso.had.prep5 <-
 
 eqdat.stats.iso <- eqdat.stats %>% 
   left_join(eqdat.iso.had.prep5, by=c('year','latinname')) %>% 
-  left_join(eqdat.iso.soda.prep5, by=c('year','latinname'))
+  left_join(eqdat.iso.soda.prep5, by=c('year','latinname')) %>% 
+  left_join(eqdat.assembl.iso.had, by=c('year','assemblage.lat05')) %>% 
+  left_join(eqdat.assembl.iso.soda, by=c('year','assemblage.lat05'))
 
 # now poleward edge group
 
@@ -361,7 +424,9 @@ poldat.iso.had.prep5 <-
 
 poldat.stats.iso <- poldat.stats %>% 
   left_join(poldat.iso.had.prep5, by=c('year','latinname')) %>% 
-  left_join(poldat.iso.soda.prep5, by=c('year','latinname'))
+  left_join(poldat.iso.soda.prep5, by=c('year','latinname')) %>% 
+  left_join(poldat.assembl.iso.had, by=c('year','assemblage.lat95')) %>% 
+  left_join(poldat.assembl.iso.soda, by=c('year','assemblage.lat95'))
 
 write_rds(poldat.stats.iso, here("processed-data","poldat.stats.iso.rds"))
 write_rds(eqdat.stats.iso, here("processed-data","eqdat.stats.iso.rds"))
