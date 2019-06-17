@@ -79,6 +79,24 @@ sstgrid <- hadisst.prep %>%
 fig1 <- grid.arrange(neusmap, sstgrid, ncol=2)
 ggsave(fig1, filename=here("results","fig1.png"),width=11, height=8, dpi=300, scale=0.75)
   
+
+sstgrid2 <- hadisst.prep %>% 
+  ggplot() + 
+  geom_raster(aes(x=year, y=y, fill=lat.year.month.mean)) + 
+  scale_fill_gradientn(colors=c("blue3","darkturquoise", "gold", "orangered", "red3"), limits = c(7,22), breaks = c(seq(8, 22, 2)),
+                       guide = guide_colourbar(nbin=100, draw.ulim = FALSE, draw.llim = FALSE)) + 
+  scale_x_continuous(limits = c(1968, 2017), breaks=seq(1968, 2017, 4), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(35, 45), breaks=seq(35, 45, 1), expand = c(0, 0)) +
+  labs(x="Year", y="Latitude") +
+  theme_bw() +
+  theme(text=element_text(family="sans",size=12,color="black"),
+        legend.text = element_text(size=12),
+        axis.text=element_text(family="sans",size=8,color="black"), 
+        axis.text.x = element_text(angle = 90, hjust = 1), 
+        axis.title=element_text(family="sans",size=12,color="black"),
+        plot.margin=margin(t = 15, r = 5, b = 5, l = 5, unit = "pt")) + 
+  guides(fill = guide_colourbar(barwidth = 0.75, barheight = 25, title="SST", reverse=TRUE)) +
+  NULL
   # gg.sbt <- sbt %>% 
   #   ggplot() +
   #   geom_raster(aes(x=year, y=lat, fill=btemp.lat.year)) + 
@@ -104,11 +122,11 @@ ggsave(fig1, filename=here("results","fig1.png"),width=11, height=8, dpi=300, sc
 #   }
 # }
 # 
-# gg.sbt.iso <- sbt %>% 
+# gg.sbt.iso <- sbt %>%
 #   ggplot() +
-#   geom_raster(aes(x=year, y=lat, fill=btemp.lat.year)) + 
+#   geom_raster(aes(x=year, y=lat, fill=btemp.lat.year)) +
 #   geom_line(data=sbt.iso.df, aes(x=year, y=latmatch, group=sbtref)) +
-#   scale_fill_gradientn(colors=c("blue3","darkturquoise", "gold", "orangered", "red3")) + 
+#   scale_fill_gradientn(colors=c("blue3","darkturquoise", "gold", "orangered", "red3")) +
 #   NULL
 # gg.sbt.iso
 # 
