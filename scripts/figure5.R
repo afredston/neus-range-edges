@@ -1,175 +1,149 @@
-library(here)
 library(tidyverse)
-library(purrr)
-library(broom)
+library(here)
+library(ggplot2)
+library(gridExtra) 
 
+# load in data 
 poldat.stats.iso <- readRDS(here("processed-data","poldat.stats.iso.rds")) %>% 
-  mutate(year = as.numeric(year),
-         thisyear.meanT.lat = as.numeric(thisyear.meanT.lat),
-         thisyear.maxT.lat = as.numeric(thisyear.maxT.lat),
-         thisyear.minT.lat = as.numeric(thisyear.minT.lat),
-         spp.dist95 = as.numeric(spp.dist95),
-         spp.lat95 = as.numeric(spp.lat95)
-  )
+  mutate(year = as.numeric(year)) 
 
 eqdat.stats.iso <- readRDS(here("processed-data","eqdat.stats.iso.rds")) %>% 
-  mutate(year = as.numeric(year),
-         thisyear.meanT.lat = as.numeric(thisyear.meanT.lat),
-         thisyear.maxT.lat = as.numeric(thisyear.maxT.lat),
-         thisyear.minT.lat = as.numeric(thisyear.minT.lat),
-         spp.lat05 = as.numeric(spp.lat05),
-         spp.dist05 = as.numeric(spp.dist05)
-  )
+  mutate(year = as.numeric(year)) 
 
-poldat.lm <- poldat.stats.iso %>% 
-  dplyr::select(latinname, commonname, spp.dist95, year) %>% 
-  distinct() %>% 
-  group_by(commonname) %>% 
-  nest() %>% 
-  mutate(
-    model = map(data, ~lm(spp.dist95 ~ year, data = .x)), 
-    tidymodel = map(model, tidy)
-  ) %>% 
-  unnest(tidymodel, .drop=TRUE) %>% 
-  filter(term=="year")
+# make assemblage-wide plots
 
-eqdat.lm <- eqdat.stats.iso %>% 
-  dplyr::select(latinname, commonname, spp.dist05, year) %>% 
-  distinct() %>% 
-  group_by(commonname) %>% 
-  nest() %>% 
-  mutate(
-    model = map(data, ~lm(spp.dist05 ~ year, data = .x)), 
-    tidymodel = map(model, tidy)
-  ) %>% 
-  unnest(tidymodel, .drop=TRUE) %>% 
-  filter(term=="year")
+poldat.stats.assemblage <- poldat.stats.iso %>% 
+  dplyr::select(year, assemblage.lat95, assemblage.edge.temp.hadisst, assemblage.edge.lat.hadisst, assemblage.edge.temp.soda, assemblage.edge.lat.soda) %>% 
+  distinct()
 
-pol.edge.tmp <- poldat.lm %>% 
-  rename( 
-    edge.est = estimate,
-    edge.sd = std.error,
-    edge.statistic = statistic, 
-    edge.pvalue = p.value) 
+eqdat.stats.assemblage <- eqdat.stats.iso %>% 
+  dplyr::select(year, assemblage.lat05, assemblage.edge.temp.hadisst, assemblage.edge.lat.hadisst, assemblage.edge.temp.soda, assemblage.edge.lat.soda) %>% 
+  distinct()
 
-pol.depth.tmp <- poldat.depth.lm %>% 
-  rename(
-    depth.est = estimate,
-    depth.sd = std.error,
-    depth.statistic = statistic,
-    depth.pvalue = p.value) %>% 
-  left_join(pol.edge.tmp, by=c('commonname','term')) 
-
-pol.ord.tmp <- poldat.abund.lm %>% 
-  rename(
-    abund.est = estimate,
-    abund.sd = std.error,
-    abund.statistic = statistic,
-    abund.pvalue = p.value) %>% 
-  left_join(pol.depth.tmp, by=c('commonname','term')) 
-
-eq.edge.tmp <- eqdat.lm %>% 
-  rename(edge.est = estimate,
-         edge.sd = std.error,
-         edge.statistic = statistic, 
-         edge.pvalue = p.value) 
-
-eq.depth.tmp <- eqdat.depth.lm %>% 
-  rename(depth.est = estimate,
-         depth.sd = std.error,
-         depth.statistic = statistic,
-         depth.pvalue = p.value) %>% 
-  full_join(eq.edge.tmp, by=c('commonname','term'))
-
-eq.ord.tmp <- eqdat.abund.lm %>% 
-  rename(abund.est = estimate,
-         abund.sd = std.error,
-         abund.statistic = statistic,
-         abund.pvalue = p.value) %>% 
-  left_join(eq.depth.tmp, by=c('commonname','term')) 
-
-pol.depth.shift.gg <- ggplot() + 
-  geom_hline(yintercept=0, color="darkgrey") + 
-  geom_vline(xintercept=0, color="darkgrey") + 
-  geom_point(data=pol.ord.tmp, aes(x=depth.est, y=edge.est), shape = 19) +
-  geom_errorbar(data=pol.ord.tmp, aes(x=depth.est, ymin = edge.est-edge.sd, ymax = edge.est+edge.sd)) + 
-  geom_errorbarh(data=pol.ord.tmp, aes(y=edge.est, xmin = depth.est-depth.sd,xmax = depth.est+depth.sd)) + 
-  labs(x="Depth Shift (m/yr)", y="Poleward Edge Shift (km/yr)") + 
-  scale_x_continuous(breaks=seq(-4, 4, 1), limits=c(-4,4)) +
-  scale_y_continuous(breaks=seq(-35, 35, 5), limits=c(-35, 35)) + 
-  annotate("text", x=-3.5, y=30, size=8, label="A") +
+eq.assemb.soda.gg <- ggplot(data=eqdat.stats.assemblage) + 
+  geom_line(aes(x=year, y=assemblage.lat05, color="darkorange"), size=1.2) + 
+  geom_line(aes(x=year, y=assemblage.edge.lat.soda, color="#56B4E9"), size=1.2) +
+  scale_color_manual(labels=c('Isotherm','Assemblage Edge'), values=c('#56B4E9','darkorange')) + 
+  theme_linedraw() +
+  theme(strip.background =element_rect(fill="grey39"))+
+  theme(strip.text = element_text(colour = 'white', face="bold")) +
+  scale_x_continuous(limits=c(1968,2017), breaks=seq(1968, 2017, 4)) +
+  scale_y_continuous(limits=c(37,47), breaks=seq(37, 47, 2)) +
+  theme(axis.text.x = element_text(angle=90)) +
+  labs(title="Equatorward Assemblage", x="Year", y="Latitude") + 
   theme_bw() +
-  theme(panel.grid.major = element_blank(), 
+  theme(legend.title=element_blank(), 
+        legend.position=c(.35, .75),
+        plot.title = element_text(margin = margin(t = 10, b = -20), hjust=0.1), 
+        panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         text=element_text(family="sans",size=12,color="black"),
         legend.text = element_text(size=12),
         axis.title=element_text(family="sans",size=12,color="black"),
-        axis.text=element_text(family="sans",size=8,color="black"),
-        axis.title.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        axis.text.x = element_blank()) +  
-  NULL
-
-eq.depth.shift.gg <- ggplot() + 
-  geom_hline(yintercept=0, color="darkgrey") + 
-  geom_vline(xintercept=0, color="darkgrey") + 
-  geom_point(data=eq.ord.tmp, aes(x=depth.est, y=edge.est), shape = 15) +
-  geom_errorbar(data=eq.ord.tmp, aes(x=depth.est, ymin = edge.est-edge.sd, ymax = edge.est+edge.sd)) + 
-  geom_errorbarh(data=eq.ord.tmp, aes(y=edge.est, xmin = depth.est-depth.sd,xmax = depth.est+depth.sd)) + 
-  labs(x="Depth Shift (m/yr)", y="Equatorward Edge Shift (km/yr)") + 
-  scale_x_continuous(breaks=seq(-4, 4, 1), limits=c(-4,4)) +
-  scale_y_continuous(breaks=seq(-25, 25, 5), limits=c(-35, 35)) + 
-  annotate("text", x=-3.5, y=30, size=8, label="C") +
-  theme_bw() +
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        text=element_text(family="sans",size=12,color="black"),
-        legend.text = element_text(size=12),
-        axis.title=element_text(family="sans",size=12,color="black"),
+        axis.text.x = element_text(angle = 90, hjust = 1), 
         axis.text=element_text(family="sans",size=8,color="black")) +
   NULL
 
-pol.abund.shift.gg <- ggplot() + 
-  geom_hline(yintercept=0, color="darkgrey") + 
-  geom_vline(xintercept=0, color="darkgrey") + 
-  geom_errorbar(data=pol.ord.tmp, aes(x=abund.est, ymin = edge.est-edge.sd,ymax = edge.est+edge.sd)) + 
-  geom_errorbarh(data=pol.ord.tmp, aes(y=edge.est, xmin = abund.est-abund.sd,xmax = abund.est+abund.sd)) + 
-  geom_point(data=pol.ord.tmp, aes(x=abund.est, y=edge.est), shape=21, fill="white") +
-  labs(x="Abundance Shift (mt/yr)", y="Edge Shift (km/yr)") + 
-  scale_x_continuous(breaks=seq(-160, 160, 40), limits=c(-160,160)) +
-  scale_y_continuous(breaks=seq(-35, 35, 5), limits=c(-35, 35)) + 
-  annotate("text", x=-140, y=30, size=8, label="B") +
-  theme_bw() +
-  theme(panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        text=element_text(family="sans",size=12,color="black"),
-        legend.text = element_text(size=12),
-        axis.title = element_blank(),
-        axis.ticks = element_blank(),
-        axis.text = element_blank()) +
-  NULL
 
-eq.abund.shift.gg <- ggplot() + 
-  geom_hline(yintercept=0, color="darkgrey") + 
-  geom_vline(xintercept=0, color="darkgrey") + 
-  geom_errorbar(data=eq.ord.tmp, aes(x=abund.est, ymin = edge.est-edge.sd,ymax = edge.est+edge.sd)) + 
-  geom_errorbarh(data=eq.ord.tmp, aes(y=edge.est, xmin = abund.est-abund.sd,xmax = abund.est+abund.sd)) + 
-  geom_point(data=eq.ord.tmp, aes(x=abund.est, y=edge.est), shape=22, fill="white") +
-  labs(x="Abundance Shift (mt/yr)", y="Edge Shift (km/yr)") + 
-  scale_x_continuous(breaks=seq(-160, 160, 40), limits=c(-160,160)) +
-  scale_y_continuous(breaks=seq(-35, 35, 5), limits=c(-35, 35)) + 
-  annotate("text", x=-140, y=30, size=8, label="D") +
+pol.assemb.soda.gg <- ggplot(data=poldat.stats.assemblage) + 
+  geom_line(aes(x=year, y=assemblage.lat95, color="darkorange"), size=1.2) + 
+  geom_line(aes(x=year, y=assemblage.edge.lat.soda, color="#56B4E9"), size=1.2) +
+  scale_color_manual(labels=c('Isotherm','Assemblage Edge'), values=c('#56B4E9','darkorange')) + 
+  theme_linedraw() +
+  theme(strip.background =element_rect(fill="grey39"))+
+  theme(strip.text = element_text(colour = 'white', face="bold")) +
+  scale_x_continuous(limits=c(1968,2017), breaks=seq(1968, 2017, 4)) +
+  scale_y_continuous(limits=c(37,47), breaks=seq(37, 47, 2)) +
+  theme(axis.text.x = element_text(angle=90)) +
+  labs(title="Poleward Assemblage", x="Year", y="Latitude") + 
   theme_bw() +
-  theme(panel.grid.major = element_blank(), 
+  theme(legend.title=element_blank(), 
+        legend.position=c(.35, .75),
+        plot.title = element_text(margin = margin(t = 10, b = -20), hjust=0.1), 
+        panel.grid.major = element_blank(), 
         panel.grid.minor = element_blank(),
         text=element_text(family="sans",size=12,color="black"),
         legend.text = element_text(size=12),
         axis.title=element_text(family="sans",size=12,color="black"),
-        axis.text=element_text(family="sans",size=8,color="black"),
-        axis.title.y = element_blank(),
-        axis.ticks.y = element_blank(),
-        axis.text.y = element_blank()) +
+        axis.text.x = element_text(angle = 90, hjust = 1), 
+        axis.text=element_text(family="sans",size=8,color="black")) +
   NULL
 
-fig4 <- cowplot::plot_grid(pol.depth.shift.gg, pol.abund.shift.gg, eq.depth.shift.gg, eq.abund.shift.gg, align="h",ncol=2, rel_widths = c(1,1,1,1), rel_heights = c(1,1,1,1))
-ggsave(filename=here("results","fig4.png"), width=6, height=5, dpi=300)
+# make species-specific plots
+
+eqdat.iso.lm <- eqdat.stats.iso %>% 
+  dplyr::select(latinname, commonname, spp.lat05, est.edge.lat.soda) %>% 
+  distinct() %>% 
+  mutate(est.edge.lat.soda = scale(est.edge.lat.soda)) %>% 
+  group_by(commonname) %>% 
+  nest() %>% 
+  mutate(
+    model = purrr::map(data, ~lm(spp.lat05 ~ est.edge.lat.soda, data = .x)), 
+    tidymodel = purrr::map(model, tidy)
+  ) %>% 
+  unnest(tidymodel, .drop=TRUE) %>% 
+  filter(term=="est.edge.lat.soda")
+
+poldat.iso.lm <- poldat.stats.iso %>% 
+  dplyr::select(latinname, commonname, spp.lat95, est.edge.lat.soda) %>% 
+  distinct() %>% 
+  mutate(est.edge.lat.soda = scale(est.edge.lat.soda)) %>% 
+  group_by(commonname) %>% 
+  nest() %>% 
+  mutate(
+    model = purrr::map(data, ~lm(spp.lat95 ~ est.edge.lat.soda, data = .x)), 
+    tidymodel = purrr::map(model, tidy)
+  ) %>% 
+  unnest(tidymodel, .drop=TRUE) %>% 
+  filter(term=="est.edge.lat.soda")
+
+# make forest plots of edge position vs isotherm position 
+poldat.iso.gg <- poldat.iso.lm %>% 
+  arrange(estimate) %>% 
+  mutate(commonname = factor(commonname, unique(commonname)),
+         signif = ifelse(p.value <= 0.05, "p < 0.05", ifelse(p.value <= 0.10, "p < 0.10", "p > 0.10"))) %>%
+  ggplot(aes(x=commonname, y=estimate, ymin=estimate-std.error, ymax=estimate+std.error, color=signif, fill=signif)) +
+  geom_pointrange() +
+  scale_color_manual(values=c('p < 0.05'='#009E73', 'p < 0.10'='#7EC3A2', 'p > 0.10'='#999999')) +
+  geom_hline(yintercept=0, color="black") +
+  labs(x=NULL, y="Isotherm Effect on \nPoleward Edge (°lat/yr)") +
+  scale_y_continuous(breaks=seq(-1.5, 1.5, 0.5), limits=c(-1.52, 1.52)) + 
+  coord_flip() +
+  theme_bw() +
+  theme(legend.position = "none",
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        text=element_text(family="sans",size=12,color="black"),
+        legend.text = element_text(size=12),
+        axis.title=element_text(family="sans",size=10,color="black"),
+        axis.text=element_text(family="sans",size=8,color="black")) +
+  NULL
+
+# WARNING! REMOVING DATA! greater argentine had a huge estimated effect (almost 4 degrees lat) and a high p-value based on a pretty small time-series, so I am just dropping it from the plot 
+
+eqdat.iso.gg <- eqdat.iso.lm %>% 
+  filter(!commonname=="Greater argentine") %>% 
+  arrange(estimate) %>% 
+  mutate(commonname = factor(commonname, unique(commonname)),
+         signif = ifelse(p.value <= 0.05, "p < 0.05", ifelse(p.value <= 0.10, "p < 0.10", "p > 0.10"))) %>%
+  ggplot(aes(x=commonname, y=estimate, ymin=estimate-std.error, ymax=estimate+std.error, color=signif, fill=signif)) +
+  geom_pointrange() +
+  scale_color_manual(values=c('p < 0.05'='#009E73', 'p < 0.10'='#7EC3A2', 'p > 0.10'='#999999')) +
+  geom_hline(yintercept=0, color="black") +
+  labs(x=NULL, y="Isotherm Effect on \nEquatorward Edge (°lat/yr)") +
+  scale_y_continuous(breaks=seq(-1.5, 1.5, 0.5), limits=c(-1.52, 1.52)) + 
+  coord_flip() +
+  theme_bw() +
+  theme(legend.position = "none",
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        text=element_text(family="sans",size=12,color="black"),
+        legend.text = element_text(size=12),
+        axis.title=element_text(family="sans",size=10,color="black"),
+        axis.text=element_text(family="sans",size=8,color="black")) +
+  NULL
+
+fig5A <- grid.arrange(pol.assemb.soda.gg, eq.assemb.soda.gg, ncol=1)
+ggsave(fig5A, filename=here("results","fig5_part1.png"),height=8, width=3, dpi=300, scale=1.1)
+fig5B <- grid.arrange(poldat.iso.gg, eqdat.iso.gg, ncol=2)
+ggsave(fig5B, filename=here("results","fig5_part2.png"),height=8, width=8, dpi=300, scale=0.8)

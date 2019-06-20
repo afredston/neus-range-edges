@@ -11,7 +11,7 @@ oisst <- "ncdcOisst2Agg_LonPM180" #DAILY from late 1981 https://coastwatch.pfeg.
 rerddap::info(hadisst) # this is griddap data
 
 startyear.hadisst <- 1967
-endyear.hadisst <- 2017 # as of last time running, 2018 was not complete in hadISST
+endyear.hadisst <- 2018 # as of last time running, 2018 was not complete in hadISST
 startyear.oisst <- 1982
 endyear.oisst <- 2017
 

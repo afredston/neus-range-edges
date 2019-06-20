@@ -38,6 +38,6 @@ coastdistdat <- data.frame(smoothgeom[, c('x','y')], seglength=c(0, geomdists))
 coastdistdat$lengthfromhere <- rev(cumsum(rev(coastdistdat[,"seglength"])))
 # first row should match st_length(smoothmap)
 
-#st_write(smoothmap, here("processed-data","coastline.shp"))
+st_write(smoothmap, here("processed-data","coastline.shp"))
 write_rds(coastdistdat, here("processed-data","coastdistdat.rds"))
 rm(list=ls())
