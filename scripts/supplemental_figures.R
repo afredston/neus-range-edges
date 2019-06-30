@@ -2,8 +2,8 @@ library(tidyverse)
 library(here)
 library(ggplot2)
 
-poldat.stats <- readRDS(here("processed-data","poldat.stats.rds"))
-eqdat.stats <- readRDS(here("processed-data","eqdat.stats.rds"))
+poldat.stats.iso <- readRDS(here("processed-data","poldat.stats.rds"))
+eqdat.stats.iso <- readRDS(here("processed-data","eqdat.stats.rds"))
 
 # use the .neus files not the .stats ones because we don't want to get confused with the adjusted years for the spring survey here--just want the actual years and temperatures
 soda.summary <- read_rds(here("processed-data","soda_neus.rds")) %>% 

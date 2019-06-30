@@ -36,46 +36,6 @@ oisst.extremes <- readRDS(here("processed-data","oisst_neus.rds")) %>%
   distinct()
 
 #################
-# LM: temperatures ~ time 
-#################
-
-hadisst.lm.mean <- hadisst.stats %>% 
-  dplyr::select(year_measured, year.month.mean, year.month.max, year.month.sd, year.month.min) %>% # use year_measured which refers to the actual year measured not the edge year to match to
-  distinct() %>% 
-  lm(year.month.mean ~ year_measured, data=.) %>% 
-  summary()
-
-hadisst.lm.max <- hadisst.stats %>% 
-  dplyr::select(year_measured, year.month.mean, year.month.max, year.month.sd, year.month.min) %>% 
-  distinct() %>% 
-  lm(year.month.max ~ year_measured, data=.) %>% 
-  summary()
-
-hadisst.lm.min <- hadisst.stats %>% 
-  dplyr::select(year_measured, year.month.mean, year.month.max, year.month.sd, year.month.min) %>% 
-  distinct() %>% 
-  lm(year.month.min ~ year_measured, data=.) %>% 
-  summary()
-
-soda.lm.mean <- soda.stats %>% 
-  dplyr::select(year_measured, year.month.mean, year.month.max, year.month.sd, year.month.min) %>% 
-  distinct() %>% 
-  lm(year.month.mean ~ year_measured, data=.) %>% 
-  summary()
-
-soda.lm.max <- soda.stats %>% 
-  dplyr::select(year_measured, year.month.mean, year.month.max, year.month.sd, year.month.min) %>% 
-  distinct() %>% 
-  lm(year.month.max ~ year_measured, data=.) %>% 
-  summary()
-
-soda.lm.min <- soda.stats %>% 
-  dplyr::select(year_measured, year.month.mean, year.month.max, year.month.sd, year.month.min) %>% 
-  distinct() %>% 
-  lm(year.month.min ~ year_measured, data=.) %>% 
-  summary()
-
-#################
 # LM: edge ~ time 
 #################
 
@@ -133,8 +93,16 @@ temps.scale <- soda.stats.summary %>%
   left_join(oisst.extremes, by="year_match") %>% 
   mutate_at(vars(-year_match), scale)
 
+## make unscaled df for back-transforming predictor variables later 
+temps.unscale <- soda.stats.summary %>% 
+  dplyr::select(year_match, year.month.mean) %>% 
+  rename(soda.year.month.mean = year.month.mean) %>% 
+  full_join(hadisst.stats.summary, by="year_match") %>% 
+  left_join(oisst.extremes, by="year_match") 
+
 ## make all GLMs 
 
+# set up dataframes with edge data and corresponding temperatures
 poldat.glm.df <- poldat.stats.iso %>% 
   dplyr::select(year, assemblage.dist95) %>% 
   distinct() %>% 
@@ -144,6 +112,7 @@ eqdat.glm.df <- eqdat.stats.iso %>%
   distinct() %>% 
   left_join(temps.scale, by=c('year'='year_match')) 
 
+# set up list of models for GLMs with distance as response var
 pol.glm.list <- list(
   soda <- "assemblage.dist95 ~ soda.year.month.mean",
   had <- "assemblage.dist95 ~ year.month.mean",
@@ -177,6 +146,7 @@ eq.glm.frame <- tibble(model = eq.glm.list) %>%
 
 # Isotherm GLMs
 
+# make dataframes 
 poldat.glm.df.iso <- poldat.stats.iso %>% 
   dplyr::select(year, assemblage.lat95, assemblage.edge.lat.hadisst, assemblage.edge.lat.soda) %>% 
   distinct() %>% 
@@ -187,6 +157,7 @@ eqdat.glm.df.iso <- eqdat.stats.iso %>%
   distinct() %>% 
   mutate_at(vars(-year, -assemblage.lat05), scale) 
 
+# make model lists 
 pol.iso.glm.list <- list(
   soda <- "assemblage.lat95 ~ assemblage.edge.lat.soda",
   had <- "assemblage.lat95 ~ assemblage.edge.lat.hadisst"
@@ -273,6 +244,7 @@ eqdat.results.df <- rbind(eq.glm.frame, eq.iso.glm.frame) %>%
 
 write_csv(poldat.results.df, here("results","poleward_assemblage_models.csv"))
 write_csv(eqdat.results.df, here("results","equatorward_assemblage_models.csv"))
+write_csv(temps.unscale, here("results", "unscaled_temp_predictors.csv"))
 
 # Species isotherms 
 

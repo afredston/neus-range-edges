@@ -20,10 +20,10 @@ eqdat.stats.assemblage <- eqdat.stats.iso %>%
   dplyr::select(year, assemblage.lat05, assemblage.edge.temp.hadisst, assemblage.edge.lat.hadisst, assemblage.edge.temp.soda, assemblage.edge.lat.soda) %>% 
   distinct()
 
-eq.assemb.soda.gg <- ggplot(data=eqdat.stats.assemblage) + 
+eq.assemb.had.gg <- ggplot(data=eqdat.stats.assemblage) + 
   geom_line(aes(x=year, y=assemblage.lat05, color="darkorange"), size=1.2) + 
-  geom_line(aes(x=year, y=assemblage.edge.lat.soda, color="#56B4E9"), size=1.2) +
-  scale_color_manual(labels=c('SBT Isotherm','Assemblage Edge'), values=c('#56B4E9','darkorange')) + 
+  geom_line(aes(x=year, y=assemblage.edge.lat.hadisst, color="#56B4E9"), size=1.2) +
+  scale_color_manual(labels=c('SST Isotherm','Assemblage Edge'), values=c('#56B4E9','darkorange')) + 
   theme_linedraw() +
   theme(strip.background =element_rect(fill="grey39"))+
   theme(strip.text = element_text(colour = 'white', face="bold")) +
@@ -45,10 +45,10 @@ eq.assemb.soda.gg <- ggplot(data=eqdat.stats.assemblage) +
   NULL
 
 
-pol.assemb.soda.gg <- ggplot(data=poldat.stats.assemblage) + 
+pol.assemb.had.gg <- ggplot(data=poldat.stats.assemblage) + 
   geom_line(aes(x=year, y=assemblage.lat95, color="darkorange"), size=1.2) + 
-  geom_line(aes(x=year, y=assemblage.edge.lat.soda, color="#56B4E9"), size=1.2) +
-  scale_color_manual(labels=c('SBT Isotherm','Assemblage Edge'), values=c('#56B4E9','darkorange')) + 
+  geom_line(aes(x=year, y=assemblage.edge.lat.hadisst, color="#56B4E9"), size=1.2) +
+  scale_color_manual(labels=c('SST Isotherm','Assemblage Edge'), values=c('#56B4E9','darkorange')) + 
   theme_linedraw() +
   theme(strip.background =element_rect(fill="grey39"))+
   theme(strip.text = element_text(colour = 'white', face="bold")) +
@@ -71,30 +71,29 @@ pol.assemb.soda.gg <- ggplot(data=poldat.stats.assemblage) +
 
 # make species-specific plots
 
-poldat.iso.lm <- poldat.stats.iso %>% 
-  dplyr::select(latinname, commonname, spp.lat95, est.edge.lat.soda) %>% 
-  distinct() %>% 
-  group_by(commonname) %>% 
-  nest() %>% 
-  mutate(
-    model = purrr::map(data, ~glm(spp.lat95 ~ est.edge.lat.soda, data = .x)), 
-    tidymodel = purrr::map(model, tidy)
-  ) %>% 
-  unnest(tidymodel, .drop=TRUE) %>% 
-  filter(term=="est.edge.lat.soda")
-
-
 eqdat.iso.lm <- eqdat.stats.iso %>% 
-  dplyr::select(latinname, commonname, spp.lat05, est.edge.lat.soda) %>% 
+  dplyr::select(latinname, commonname, spp.lat05, est.edge.lat.hadisst) %>% 
   distinct() %>% 
   group_by(commonname) %>% 
   nest() %>% 
   mutate(
-    model = purrr::map(data, ~glm(spp.lat05 ~ est.edge.lat.soda, data = .x)), 
+    model = purrr::map(data, ~glm(spp.lat05 ~ est.edge.lat.hadisst, data = .x)), 
     tidymodel = purrr::map(model, tidy)
   ) %>% 
   unnest(tidymodel, .drop=TRUE) %>% 
-  filter(term=="est.edge.lat.soda")
+  filter(term=="est.edge.lat.hadisst")
+
+poldat.iso.lm <- poldat.stats.iso %>% 
+  dplyr::select(latinname, commonname, spp.lat95, est.edge.lat.hadisst) %>% 
+  distinct() %>% 
+  group_by(commonname) %>% 
+  nest() %>% 
+  mutate(
+    model = purrr::map(data, ~glm(spp.lat95 ~ est.edge.lat.hadisst, data = .x)), 
+    tidymodel = purrr::map(model, tidy)
+  ) %>% 
+  unnest(tidymodel, .drop=TRUE) %>% 
+  filter(term=="est.edge.lat.hadisst")
 
 # make forest plots of edge position vs isotherm position 
 poldat.iso.gg <- poldat.iso.lm %>% 
@@ -105,8 +104,8 @@ poldat.iso.gg <- poldat.iso.lm %>%
   geom_pointrange() +
   scale_color_manual(values=c('p < 0.05'='#009E73', 'p < 0.10'='#7EC3A2', 'p > 0.10'='#999999')) +
   geom_hline(yintercept=0, color="black") +
-  labs(x=NULL, y="Poleward Edge Shift (°lat) per \n1°lat SBT Isotherm Shift") +
-  scale_y_continuous(breaks=seq(-1, 1, 0.5), limits=c(-1, 1)) + 
+  labs(x=NULL, y="Poleward Edge Shift (°lat) per \n1°lat SST  Isotherm Shift") +
+  scale_y_continuous(breaks=seq(-2, 2, 1), limits=c(-2,2)) + 
   coord_flip() +
   theme_bw() +
   theme(legend.position = "none",
@@ -129,8 +128,8 @@ eqdat.iso.gg <- eqdat.iso.lm %>%
   geom_pointrange() +
   scale_color_manual(values=c('p < 0.05'='#009E73', 'p < 0.10'='#7EC3A2', 'p > 0.10'='#999999')) +
   geom_hline(yintercept=0, color="black") +
-  labs(x=NULL, y="Equatorward Edge Shift (°lat) per \n1°lat SBT Isotherm Shift") +
-  scale_y_continuous(breaks=seq(-1, 1, 0.5), limits=c(-1, 1)) + 
+  labs(x=NULL, y="Equatorward Edge Shift (°lat) per \n1°lat SST Isotherm Shift") +
+  scale_y_continuous(breaks=seq(-2, 2, 1), limits=c(-2,2)) + 
   coord_flip() +
   theme_bw() +
   theme(legend.position = "none",
@@ -142,8 +141,8 @@ eqdat.iso.gg <- eqdat.iso.lm %>%
         axis.text=element_text(family="sans",size=8,color="black")) +
   NULL
 
-fig5A <- grid.arrange(pol.assemb.soda.gg, eq.assemb.soda.gg, ncol=1)
-ggsave(fig5A, filename=here("results","fig5_part1.png"),height=8, width=3, dpi=300, scale=1.1)
-fig5B <- grid.arrange(poldat.iso.gg, eqdat.iso.gg, ncol=2)
-ggsave(fig5B, filename=here("results","fig5_part2.png"),height=8, width=8, dpi=300, scale=0.8)
+fig6A <- grid.arrange(pol.assemb.had.gg, eq.assemb.had.gg, ncol=1)
+ggsave(fig6A, filename=here("results","fig6_part1.png"),height=8, width=3, dpi=300, scale=1.1)
+fig6B <- grid.arrange(poldat.iso.gg, eqdat.iso.gg, ncol=2)
+ggsave(fig6B, filename=here("results","fig6_part2.png"),height=8, width=8, dpi=300, scale=0.8)
 rm(list=ls())
