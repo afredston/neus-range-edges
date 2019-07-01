@@ -73,5 +73,60 @@ eqdat.stats.samples <- readRDS(here("processed-data","eqdat.stats.iso.rds")) %>%
 quantile(eqdat.stats.samples$numobs)
 quantile(eqdat.stats.samples$numyears)
 
+###################
+# 5. Changes in depth and abundance 
+###################
 
+poldat.stats.iso <- readRDS(here("processed-data","poldat.stats.iso.rds")) %>% 
+  mutate(year = as.numeric(year)) 
 
+eqdat.stats.iso <- readRDS(here("processed-data","eqdat.stats.iso.rds")) %>% 
+  mutate(year = as.numeric(year)) 
+
+poldat.depth.lm <- poldat.stats.iso %>% 
+  dplyr::select(latinname, commonname, depth.mean.wt, year) %>% 
+  distinct() %>% 
+  group_by(commonname) %>% 
+  nest() %>% 
+  mutate(
+    model = map(data, ~lm(depth.mean.wt ~ year, data = .x)), 
+    tidymodel = map(model, tidy)
+  ) %>% 
+  unnest(tidymodel, .drop=TRUE) %>% 
+  filter(term=="year")
+
+eqdat.depth.lm <- eqdat.stats.iso %>% 
+  dplyr::select(latinname, commonname, depth.mean.wt, year) %>% 
+  distinct() %>% 
+  group_by(commonname) %>% 
+  nest() %>% 
+  mutate(
+    model = map(data, ~lm(depth.mean.wt ~ year, data = .x)), 
+    tidymodel = map(model, tidy)
+  ) %>% 
+  unnest(tidymodel, .drop=TRUE) %>% 
+  filter(term=="year")
+
+poldat.abund.lm <- poldat.stats.iso %>% 
+  dplyr::select(latinname, commonname, biomass.correct.kg, year) %>% 
+  distinct() %>% 
+  group_by(commonname) %>% 
+  nest() %>% 
+  mutate(
+    model = map(data, ~lm(biomass.correct.kg ~ year, data = .x)), 
+    tidymodel = map(model, tidy)
+  ) %>% 
+  unnest(tidymodel, .drop=TRUE) %>% 
+  filter(term=="year")
+
+eqdat.abund.lm <- eqdat.stats.iso %>% 
+  dplyr::select(latinname, commonname, biomass.correct.kg, year) %>% 
+  distinct() %>% 
+  group_by(commonname) %>% 
+  nest() %>% 
+  mutate(
+    model = map(data, ~lm(biomass.correct.kg ~ year, data = .x)), 
+    tidymodel = map(model, tidy)
+  ) %>% 
+  unnest(tidymodel, .drop=TRUE) %>% 
+  filter(term=="year")

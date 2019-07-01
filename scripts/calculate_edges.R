@@ -38,16 +38,12 @@ poldat.stats <- poldat %>%
     spp.dist95 = quantile(coastdist_km, 0.95), 
     spp.dist99 = quantile(coastdist_km, 0.99), 
     spp.distmax = max(coastdist_km),
-    biomass.sum = sum(biomass.correct), 
     depth.mean = mean(depth),
-    depth.mean.wt = weighted.mean(depth, w=biomass.correct, na.rm=TRUE)
+    depth.mean.wt = weighted.mean(depth, w=biomass.raw)
   ) %>% 
   ungroup() %>% 
-  dplyr::select(year, latinname, commonname, genus, family, order, class, phylum, numyears, numobs, numobsyear, meanobsyear, assemblage.dist95, spp.dist90, spp.dist95, spp.dist99, spp.distmax, biomass.sum, depth.mean, depth.mean.wt, assemblage.lat95, spp.lat95, spp.lat95round) %>% 
-  distinct() %>% 
-  group_by(latinname) %>% 
-  mutate(overall.biomass = mean(biomass.sum)) %>% 
-  ungroup()
+  dplyr::select(year, latinname, commonname, genus, family, order, class, phylum, numyears, numobs, numobsyear, meanobsyear, assemblage.dist95, spp.dist90, spp.dist95, spp.dist99, spp.distmax, biomass.correct.kg, depth.mean, depth.mean.wt, assemblage.lat95, spp.lat95, spp.lat95round) %>% 
+  distinct() 
 
 eqdat.stats <- eqdat %>% 
   rowwise() %>% 
@@ -67,16 +63,12 @@ eqdat.stats <- eqdat %>%
     spp.dist05 = quantile(coastdist_km, 0.05), 
     spp.dist01 = quantile(coastdist_km, 0.01), 
     spp.distmin = min(coastdist_km),
-    biomass.sum = sum(biomass.correct), 
     depth.mean = mean(depth),
-    depth.mean.wt = weighted.mean(depth, w=biomass.correct, na.rm=TRUE)
+    depth.mean.wt = weighted.mean(depth, w=biomass.raw)
   ) %>% 
   ungroup() %>% 
-  dplyr::select(year, latinname, commonname, genus, family, order, class, phylum, numyears, numobs, numobsyear, meanobsyear, assemblage.dist05, spp.dist10, spp.dist05, spp.dist01, spp.distmin, biomass.sum, depth.mean, depth.mean.wt, assemblage.lat05, spp.lat05, spp.lat05round) %>% 
-  distinct() %>% 
-  group_by(latinname) %>% 
-  mutate(overall.biomass = mean(biomass.sum)) %>% 
-  ungroup()
+  dplyr::select(year, latinname, commonname, genus, family, order, class, phylum, numyears, numobs, numobsyear, meanobsyear, assemblage.dist05, spp.dist10, spp.dist05, spp.dist01, spp.distmin, biomass.correct.kg, depth.mean, depth.mean.wt, assemblage.lat05, spp.lat05, spp.lat05round) %>% 
+  distinct() 
 
 write_rds(eqdat.stats, here("processed-data","eqdat.stats.rds"))
 write_rds(poldat.stats, here("processed-data","poldat.stats.rds"))

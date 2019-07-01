@@ -8,7 +8,10 @@ library(gridExtra)
 library(rfishbase) 
 library(stringr)
 
-neus <- readRDS(here("processed-data", "neus.rds")) 
+neus <- readRDS(here("processed-data", "neus.rds")) %>% 
+  rowwise() %>% 
+  mutate(haulid = paste(year, cruise6, stratum, station, sep="-")) %>% 
+  filter(biomass.correct.kg > 0) # get rid of true absences--if biomass.correct.kg = 0, the species was never observed in that entire year 
 sa.spp <- read_csv(here("data", "oceanadapt_SA_050519.csv")) %>% 
   dplyr::select(Species) %>% 
   distinct() %>% 
