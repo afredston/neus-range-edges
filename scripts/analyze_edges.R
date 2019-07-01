@@ -14,13 +14,13 @@ soda.stats <- readRDS(here("processed-data","soda_stats.rds")) %>%
   filter(year_match > 1980) 
 
 soda.stats.summary <- soda.stats %>% 
-  dplyr::select(year_match, year.month.mean, year.month.max, year.month.sd, year.month.min) %>% 
+  dplyr::select(year_match, year.month.mean, year.month.sd) %>% 
   distinct() # get rid of lat-specific stats
 
 hadisst.stats <- readRDS(here("processed-data","hadisst_stats.rds")) 
 
 hadisst.stats.summary <- hadisst.stats %>% 
-  dplyr::select(year_match, year.month.mean, year.month.max, year.month.sd, year.month.min) %>% 
+  dplyr::select(year_match, year.month.mean, year.month.sd) %>% 
   distinct() # get rid of lat-specific stats
 
 oisst.extremes <- readRDS(here("processed-data","oisst_neus.rds")) %>% 

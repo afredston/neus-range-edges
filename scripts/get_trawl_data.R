@@ -102,16 +102,17 @@ neus <- neus.data.raw %>%
   mutate(biomass.raw = sum(biomass.sex)) %>% # add up biomass from different sex classes
   ungroup() %>% 
   rename_all(tolower) %>% 
-  filter(biomass.raw>0,
-         lat>36) %>%
   dplyr::select(-botsalin, -surfsalin, -x1, -catchsex, -biomass.sex) %>%
   distinct() %>%
   left_join(biomass.df, by=c('svspp'='SVSPP','year'='YEAR')) %>% 
   mutate(svspp=as.character(svspp)) %>% 
   left_join(neus.spp.prep, by="svspp") %>% 
   filter(taxlvl=="species",
-         !is.na(lat),
-         !is.na(lon)) %>% # retain only records IDed to species
+         !is.na(lat), # they are all georeferenced, this doesn't do anything
+         !is.na(lon),
+         biomass.raw>0,
+        lat>36
+         ) %>% # retain only records IDed to species
   mutate(sciname = str_to_sentence(sciname))
 
 # script below explores patterns of missingness and latitude
