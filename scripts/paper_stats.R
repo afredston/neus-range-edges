@@ -74,6 +74,28 @@ quantile(eqdat.stats.samples$numobs)
 quantile(eqdat.stats.samples$numyears)
 
 ###################
+# 3. Range edge position analysis
+###################
+
+poldat.stats.iso <- readRDS(here("processed-data","poldat.stats.iso.rds")) %>% 
+  mutate(year = as.numeric(year)) 
+
+eqdat.stats.iso <- readRDS(here("processed-data","eqdat.stats.iso.rds")) %>% 
+  mutate(year = as.numeric(year)) 
+
+poldat.assemblage.lm <- poldat.stats.iso %>% 
+  dplyr::select(year, assemblage.dist95) %>% 
+  distinct() %>% 
+  lm(assemblage.dist95 ~ year, data = .) %>% 
+  summary()
+
+eqdat.assemblage.lm <- eqdat.stats.iso %>% 
+  dplyr::select(year, assemblage.dist05) %>% 
+  distinct() %>% 
+  lm(assemblage.dist05 ~ year, data = .) %>% 
+  summary() 
+
+###################
 # 5. Changes in depth and biomass 
 ###################
 

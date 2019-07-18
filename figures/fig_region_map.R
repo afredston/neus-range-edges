@@ -67,6 +67,7 @@ hadisst.prep <- hadisst.neus %>%
   distinct()
 
 # get SST isotherms 
+
 lm.hadisst2 <- hadisst.neus %>% # this is numbered #2 to differentiate it from lms on hadisst in other scripts that nest by year_match, not year
   nest(-year) %>% 
   mutate(
@@ -74,6 +75,7 @@ lm.hadisst2 <- hadisst.neus %>% # this is numbered #2 to differentiate it from l
     tidymodel = purrr::map(model, tidy)
   ) %>% 
   unnest(tidymodel, .drop=TRUE) 
+
 get.had.lat2 <- function(temp, year) {
   tmp <- lm.hadisst2[lm.hadisst2$year==year,]
   out <- (temp-tmp[[1,3]])/tmp[[2,3]]
@@ -115,5 +117,5 @@ sstgrid <- ggplot() +
   guides(fill = guide_colourbar(barwidth = 0.75, barheight = 25, title="SST", reverse=TRUE)) +
   NULL
 
-fig2 <- grid.arrange(neusmap, sstgrid, ncol=2)
-ggsave(fig2, filename=here("results","fig2.png"),width=11, height=8, dpi=300, scale=0.75)
+neusfig <- grid.arrange(neusmap, sstgrid, ncol=2)
+ggsave(neusfig, filename=here("results","fig_region_map.png"),width=11, height=8, dpi=300, scale=0.75)

@@ -14,4 +14,4 @@ Scripts should be run in the following order:
 1. `analyze_edges.R`
 1. `paper_stats.R`
 
-Once the scripts above have generated the requisite objects in `processed-data`, then any of the figure files can be run as desired. 
+Once the scripts above have generated the requisite objects in `processed-data`, then any of the figure files can be run as desired. Users should create a `neus-range-edges/results` and a `neus-range-edges/data` folder; these are not version controlled due to the size of files involved. 

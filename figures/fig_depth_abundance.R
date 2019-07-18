@@ -173,7 +173,7 @@ pol.abund.shift.gg <- ggplot() +
   geom_errorbar(data=pol.ord.tmp, aes(x=abund.est, ymin = edge.est-edge.sd,ymax = edge.est+edge.sd)) + 
   geom_errorbarh(data=pol.ord.tmp, aes(y=edge.est, xmin = abund.est-abund.sd,xmax = abund.est+abund.sd)) + 
   geom_point(data=pol.ord.tmp, aes(x=abund.est, y=edge.est), shape=21, fill="white") +
-  labs(x="Biomass Shift (mt/yr)", y="Edge Shift (km/yr)") + 
+  labs(x="Biomass Change (mt/yr)", y="Edge Shift (km/yr)") + 
   scale_x_continuous(breaks=seq(-3500, 3500, 1000), limits=c(-3500, 3500)) +
   scale_y_continuous(breaks=seq(-35, 35, 5), limits=c(-35, 35)) + 
   annotate("text", x=-3300, y=30, size=8, label="B") +
@@ -193,7 +193,7 @@ eq.abund.shift.gg <- ggplot() +
   geom_errorbar(data=eq.ord.tmp, aes(x=abund.est, ymin = edge.est-edge.sd,ymax = edge.est+edge.sd)) + 
   geom_errorbarh(data=eq.ord.tmp, aes(y=edge.est, xmin = abund.est-abund.sd,xmax = abund.est+abund.sd)) + 
   geom_point(data=eq.ord.tmp, aes(x=abund.est, y=edge.est), shape=22, fill="white") +
-  labs(x="Biomass Shift (mt/yr)", y="Edge Shift (km/yr)") + 
+  labs(x="Biomass Change (mt/yr)", y="Edge Shift (km/yr)") + 
   scale_x_continuous(breaks=seq(-3500, 3500, 1000), limits=c(-3500, 3500)) +
   scale_y_continuous(breaks=seq(-35, 35, 5), limits=c(-35, 35)) + 
   annotate("text", x=-3300, y=30, size=8, label="D") +
@@ -209,5 +209,6 @@ eq.abund.shift.gg <- ggplot() +
         axis.text.y = element_blank()) +
   NULL
 
-fig7 <- cowplot::plot_grid(pol.depth.shift.gg, pol.abund.shift.gg, eq.depth.shift.gg, eq.abund.shift.gg, align="h",ncol=2, rel_widths = c(1,1,1,1), rel_heights = c(1,1,1,1))
-ggsave(filename=here("results","fig7.png"), width=6, height=5, dpi=300)
+fig_depth_abundance <- cowplot::plot_grid(pol.depth.shift.gg, pol.abund.shift.gg, eq.depth.shift.gg, eq.abund.shift.gg, align="h",ncol=2, rel_widths = c(1,1,1,1), rel_heights = c(1,1,1,1))
+
+ggsave(fig_depth_abundance, filename=here("results","fig_depth_abundance.png"), width=6, height=5, dpi=300)

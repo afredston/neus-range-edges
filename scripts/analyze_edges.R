@@ -57,8 +57,8 @@ eqdat.lm <- eqdat.stats.iso %>%
   group_by(commonname) %>% 
   nest() %>% 
   mutate(
-    model = map(data, ~lm(spp.dist05 ~ year, data = .x)), 
-    tidymodel = map(model, tidy)
+    model = purrr::map(data, ~lm(spp.dist05 ~ year, data = .x)), 
+    tidymodel = purrr::map(model, tidy)
   ) %>% 
   unnest(tidymodel, .drop=TRUE) %>% 
   filter(term=="year")

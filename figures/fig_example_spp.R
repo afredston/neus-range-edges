@@ -20,9 +20,7 @@ eq.ex <- eqdat.stats %>%
   rename(edge.dist = spp.dist05)%>% 
   mutate(edgetype = "eq")
 
-
-
-fig4 <- rbind(pol.ex, eq.ex) %>% 
+gg.spp.ex <- rbind(pol.ex, eq.ex) %>% 
   ggplot(aes(x=year, y=edge.dist, group=commonname, color = commonname)) + 
   geom_line() + 
   geom_point(size=0.75) + 
@@ -42,4 +40,4 @@ fig4 <- rbind(pol.ex, eq.ex) %>%
         axis.text=element_text(family="sans",size=8,color="black")) +
   NULL
 
-ggsave(fig4, filename=here("results","fig4.png"),width=8,height=5, scale=0.9, dpi=300)
+ggsave(gg.spp.ex, filename=here("results","fig_example_spp.png"),width=8,height=5, scale=0.9, dpi=300)
