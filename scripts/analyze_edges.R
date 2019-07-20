@@ -14,13 +14,13 @@ soda.stats <- readRDS(here("processed-data","soda_stats.rds")) %>%
   filter(year_match > 1980) 
 
 soda.stats.summary <- soda.stats %>% 
-  dplyr::select(year_match, year.month.mean, year.month.sd) %>% 
+  dplyr::select(year_match, year.month.mean) %>% 
   distinct() # get rid of lat-specific stats
 
 hadisst.stats <- readRDS(here("processed-data","hadisst_stats.rds")) 
 
 hadisst.stats.summary <- hadisst.stats %>% 
-  dplyr::select(year_match, year.month.mean, year.month.sd) %>% 
+  dplyr::select(year_match, year.month.mean) %>% 
   distinct() # get rid of lat-specific stats
 
 oisst.extremes <- readRDS(here("processed-data","oisst_neus.rds")) %>% 
@@ -100,7 +100,20 @@ temps.unscale <- soda.stats.summary %>%
   full_join(hadisst.stats.summary, by="year_match") %>% 
   left_join(oisst.extremes, by="year_match") 
 
-## make all GLMs 
+temps.unscale.summary <- soda.stats.summary %>% 
+  dplyr::select(year_match, year.month.mean) %>% 
+  rename(soda.year.month.mean = year.month.mean) %>% 
+  full_join(hadisst.stats.summary, by="year_match") %>% 
+  left_join(oisst.extremes, by="year_match") %>% 
+  gather(key="dataset", value="rawdata",-year_match) %>% 
+  group_by(dataset) %>% 
+  mutate(sample_mean = mean(rawdata, na.rm=T),
+         sample_sd = sd(rawdata, na.rm=T)) %>% 
+  ungroup() %>% 
+  dplyr::select(dataset, sample_mean, sample_sd) %>% 
+  distinct() 
+
+## make all GLMs
 
 # set up dataframes with edge data and corresponding temperatures
 poldat.glm.df <- poldat.stats.iso %>% 
@@ -111,6 +124,15 @@ eqdat.glm.df <- eqdat.stats.iso %>%
   dplyr::select(year, assemblage.dist05) %>% 
   distinct() %>% 
   left_join(temps.scale, by=c('year'='year_match')) 
+
+# tmp1 <- eqdat.stats.iso %>% 
+#   dplyr::select(year, assemblage.dist05) %>% 
+#   distinct() %>% 
+#   left_join(temps.unscale, by=c('year'='year_match')) 
+# 
+# tmp2 <- tmp1 %>% 
+#   glm(assemblage.dist05 ~ soda.year.month.mean + year.daily.mean + year.daily.99 + year.daily.01 + soda.year.month.mean*year.daily.mean + year.daily.mean*year.daily.99, data = .) %>% 
+#   summary() 
 
 # set up list of models for GLMs with distance as response var
 pol.glm.list <- list(
@@ -149,13 +171,11 @@ eq.glm.frame <- tibble(model = eq.glm.list) %>%
 # make dataframes 
 poldat.glm.df.iso <- poldat.stats.iso %>% 
   dplyr::select(year, assemblage.lat95, assemblage.edge.lat.hadisst, assemblage.edge.lat.soda) %>% 
-  distinct() %>% 
-  mutate_at(vars(-year, -assemblage.lat95), scale) 
+  distinct() 
 
 eqdat.glm.df.iso <- eqdat.stats.iso %>% 
   dplyr::select(year, assemblage.lat05, assemblage.edge.lat.hadisst, assemblage.edge.lat.soda) %>% 
-  distinct() %>% 
-  mutate_at(vars(-year, -assemblage.lat05), scale) 
+  distinct() 
 
 # make model lists 
 pol.iso.glm.list <- list(
@@ -192,13 +212,11 @@ eq.iso.glm.frame <- tibble(model = eq.iso.glm.list) %>%
 
 pol.lme.df.iso <- poldat.stats.iso %>% 
   dplyr::select(year, commonname, spp.lat95, est.edge.lat.hadisst, est.edge.lat.soda) %>% 
-  distinct() %>% 
-  mutate_at(vars(-year, -commonname, -spp.lat95), scale)
+  distinct() 
 
 eq.lme.df.iso <- eqdat.stats.iso %>% 
   dplyr::select(year, commonname, spp.lat05, est.edge.lat.hadisst, est.edge.lat.soda) %>% 
-  distinct() %>% 
-  mutate_at(vars(-year, -commonname, -spp.lat05), scale) 
+  distinct() 
 
 pol.iso.lme.list <- list(
   soda <- "spp.lat95 ~ est.edge.lat.soda + (1|commonname)",
@@ -210,7 +228,7 @@ eq.iso.lme.list <- list(
   had <- "spp.lat05 ~ est.edge.lat.hadisst+ (1|commonname)"
 )
 
-# run all GLMs and extract the outputs in a table with AICs 
+# run all LMEMs and extract the outputs in a table with AICs 
 pol.iso.lme.frame <- tibble(model = pol.iso.lme.list) %>%
   mutate(model.name = names(model),
          model = map(model, as.formula),
@@ -245,6 +263,8 @@ eqdat.results.df <- rbind(eq.glm.frame, eq.iso.glm.frame) %>%
 write_csv(poldat.results.df, here("results","poleward_assemblage_models.csv"))
 write_csv(eqdat.results.df, here("results","equatorward_assemblage_models.csv"))
 write_csv(temps.unscale, here("results", "unscaled_temp_predictors.csv"))
+write_csv(temps.unscale.summary, here("results", "unscaled_temp_predictors_summary.csv"))
+
 
 # Species isotherms 
 
