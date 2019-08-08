@@ -70,14 +70,32 @@ eqdat.lm <- eqdat.stats.iso %>%
 poldat.assemblage.lm <- poldat.stats.iso %>% 
   dplyr::select(year, assemblage.dist95) %>% 
   distinct() %>% 
-  lm(assemblage.dist95 ~ year, data = .) %>% 
-  summary()
+  mutate(commonname = "ASSEMBLAGE") %>% 
+  group_by(commonname) %>% 
+  nest() %>% 
+  mutate(
+    model = purrr::map(data, ~lm(assemblage.dist95 ~ year, data = .x)), 
+    tidymodel = purrr::map(model, tidy)
+  ) %>% 
+  unnest(tidymodel, .drop=TRUE) %>% 
+  filter(term=="year")
+poldat.lm.results <- rbind(poldat.lm, poldat.assemblage.lm)
+write_csv(poldat.lm.results, here("results","poleward_edges_time.csv"))
 
 eqdat.assemblage.lm <- eqdat.stats.iso %>% 
   dplyr::select(year, assemblage.dist05) %>% 
   distinct() %>% 
-  lm(assemblage.dist05 ~ year, data = .) %>% 
-  summary() 
+  mutate(commonname = "ASSEMBLAGE") %>% 
+  group_by(commonname) %>% 
+  nest() %>% 
+  mutate(
+    model = purrr::map(data, ~lm(assemblage.dist05 ~ year, data = .x)), 
+    tidymodel = purrr::map(model, tidy)
+  ) %>% 
+  unnest(tidymodel, .drop=TRUE) %>% 
+  filter(term=="year")
+eqdat.lm.results <- rbind(eqdat.lm, eqdat.assemblage.lm)
+write_csv(eqdat.lm.results, here("results","equatorward_edges_time.csv"))
 
 #################
 # models of edges and temperature
