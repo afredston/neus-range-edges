@@ -3,6 +3,7 @@ library(tidyverse)
 library(purrr)
 library(broom)
 library(gridExtra)
+library(cowplot)
 
 # load in datasets 
 eqdat.stats.iso <- readRDS(here("processed-data","eqdat.stats.iso.rds")) %>% 
@@ -78,6 +79,7 @@ eqspp.gg.sst <- eqdat.glm.sst %>%
   geom_pointrange(size=0.7) +
   scale_color_manual(values=c('p < 0.05'='#006837', 'p < 0.10'='#51C574', 'p > 0.10'='grey85')) +
   geom_hline(yintercept=0, color="black") +
+  geom_hline(yintercept=1, color="grey40", linetype="dashed") +
   labs(x=NULL, y="Edge Shift (°lat) per 1°lat \nSST Isotherm Shift") +
   scale_y_continuous(breaks=seq(-2, 2, 1), limits=c(-2,2)) + 
   coord_flip() +
@@ -88,7 +90,10 @@ eqspp.gg.sst <- eqdat.glm.sst %>%
         text=element_text(family="sans",size=12,color="black"),
         legend.text = element_text(size=12),
         axis.title=element_text(family="sans",size=10,color="black"),
-        axis.text=element_text(family="sans",size=8,color="black")) +
+        axis.text=element_text(family="sans",size=8,color="black"),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) +
   NULL
 
 eqspp.gg.sbt <- eqdat.glm.sbt %>% 
@@ -99,6 +104,7 @@ eqspp.gg.sbt <- eqdat.glm.sbt %>%
   geom_pointrange(size=0.7) +
   scale_color_manual(values=c('p < 0.05'='#006837', 'p < 0.10'='#51C574', 'p > 0.10'='grey85')) +
   geom_hline(yintercept=0, color="black") +
+  geom_hline(yintercept=1, color="grey40", linetype="dashed") +
   labs(x=NULL, y="Edge Shift (°lat) per 1°lat \nSBT Isotherm Shift") +
   scale_y_continuous(breaks=seq(-2, 2, 1), limits=c(-2,2)) + 
   coord_flip() +
@@ -109,8 +115,11 @@ eqspp.gg.sbt <- eqdat.glm.sbt %>%
         text=element_text(family="sans",size=12,color="black"),
         legend.text = element_text(size=12),
         axis.title=element_text(family="sans",size=10,color="black"),
-        axis.text=element_text(family="sans",size=8,color="black")) +
+        axis.text=element_text(family="sans",size=8,color="black"),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank()) +
   NULL
 
-eqspp.glm.gg <- grid.arrange(eqspp.gg.time, eqspp.gg.sst, eqspp.gg.sbt, ncol=3)
+eqspp.glm.gg <- cowplot::plot_grid(eqspp.gg.time, eqspp.gg.sst, eqspp.gg.sbt, align = "h", nrow = 1, rel_widths = c(0.4, 0.3, 0.3))
 ggsave(eqspp.glm.gg, width=11, height=7, dpi=300, filename=here("results","fig_equatorward_spp.png"))
