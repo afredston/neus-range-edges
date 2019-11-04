@@ -35,7 +35,7 @@ bathy.mask <- bathy %>%
   as("SpatialPolygonsDataFrame") %>% 
   st_as_sf() %>% # retains CRS of bathy.raw
   dplyr::filter(layer <= 300) %>% # get rid of values over 300m deep
-  st_intersection(st_union(useez)) # keep only points within the EEZ; crop out lakes, Canada 
+  st_intersection(st_buffer(st_union(useez), 0)) # keep only points within the EEZ; crop out lakes, Canada; st_buffer() prevents error from sf about points not matching exactly
 
 # load raw temperature datasets, crop to extent of shelf, change back into dataframes 
 hadisst.neus <- read_rds(here("processed-data","hadisst_raw.rds")) %>% 
@@ -74,11 +74,20 @@ oisst.neus <- read_rds(here("processed-data","oisst_raw.rds")) %>%
   filter(year_match > min(year_match))
 
 # different because this one is a .nc file
-soda.neus <- raster::stack(here("data", "soda3.4.2_mn_ocean_reg_bottemp.nc")) %>% 
-  rotate() %>%  # Rotate it to be -180 to 180
-  projectRaster(crs = "+proj=longlat +ellps=WGS84 +no_defs") %>%
+# for some reason the script below does not run in a continuous pipe on all machines, so it is broken up into intermediate objects here 
+soda.neus.raw <- raster::stack(here("data", "soda3.4.2_mn_ocean_reg_bottemp.nc")) 
+
+soda.neus.prep <- soda.neus.raw %>%
+  rotate()
+
+soda.neus.raster <- soda.neus.prep %>%  # Rotate it to be -180 to 180
+  projectRaster(crs = "+proj=longlat +ellps=WGS84 +no_defs") 
+
+soda.neus.crop <- soda.neus.raster %>%
   raster::mask(bathy.mask) %>% 
-  raster::crop(extent(bathy.mask)) %>% 
+  raster::crop(extent(bathy.mask)) 
+
+soda.neus <- soda.neus.crop %>% 
   raster::as.data.frame(xy=TRUE, long=TRUE) %>% 
   mutate(
     time = lubridate::ymd(str_sub(str_replace(layer, "X", ""), 1, 10)),
@@ -90,7 +99,7 @@ soda.neus <- raster::stack(here("data", "soda3.4.2_mn_ocean_reg_bottemp.nc")) %>
   filter(!is.na(btemp)) %>% 
   mutate(year_measured = ifelse(month %in% c(1,2), year-1, year),
          year_match = year_measured + 1) %>% 
-  filter(year_match > min(year_match)) # ditch year_match=1980; it is disingenuous because it is actually only the first 3 months of the previous year
+  filter(year_match > min(year_match)) # ditch year_match=1980; it is misleading because it is actually only the first 3 months of the previous year
 
 # save files--they are slow to generate!
 write_rds(oisst.neus, here("processed-data","oisst_neus.rds"))
@@ -168,3 +177,4 @@ soda.stats <- soda.neus %>%
 write_rds(oisst.stats, here("processed-data","oisst_stats.rds"))
 write_rds(hadisst.stats, here("processed-data","hadisst_stats.rds"))
 write_rds(soda.stats, here("processed-data","soda_stats.rds"))
+rm(list=ls())

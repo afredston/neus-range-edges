@@ -26,13 +26,9 @@ hadisst.lm.mean <- hadisst.stats %>%
 oisst.lm.high <- oisst.stats %>% 
   filter(year_measured >= 1982) %>% 
   group_by(year_measured) %>% 
-  mutate(
-    year.daily.mean = mean(sst),
-    year.daily.99 = quantile(sst, 0.99),
-    year.daily.01 = quantile(sst, 0.01)
-  ) %>% 
+  mutate(year.daily.99 = quantile(sst, 0.99)) %>% 
   ungroup() %>% 
-  dplyr::select(year_measured, year.daily.99, year.daily.01, year.daily.mean) %>% 
+  dplyr::select(year_measured, year.daily.99) %>% 
   distinct() %>% 
   lm(year.daily.99 ~ year_measured, data=.) %>% 
   summary()
@@ -40,13 +36,9 @@ oisst.lm.high <- oisst.stats %>%
 oisst.lm.low <- oisst.stats %>% 
   filter(year_measured >= 1982) %>% 
   group_by(year_measured) %>% 
-  mutate(
-    year.daily.mean = mean(sst),
-    year.daily.99 = quantile(sst, 0.99),
-    year.daily.01 = quantile(sst, 0.01)
-  ) %>% 
+  mutate(year.daily.01 = quantile(sst, 0.01)) %>% 
   ungroup() %>% 
-  dplyr::select(year_measured, year.daily.99, year.daily.01, year.daily.mean) %>% 
+  dplyr::select(year_measured, year.daily.01) %>% 
   distinct() %>% 
   lm(year.daily.01 ~ year_measured, data=.) %>% 
   summary()
