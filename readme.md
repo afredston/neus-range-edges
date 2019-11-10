@@ -11,7 +11,7 @@ Scripts should be run in the following order:
 1. `coastline_length.R`
 1. `calculate_edges.R`
 1. `isotherms.R`
-1. `analyze_edges.R`
-1. `paper_stats.R`
+1. `analyze_edges.R` (contains all models of range edges)
+1. `paper_stats.R` (contains miscellaneous other statistics in the paper)
 
 Once the scripts above have generated the requisite objects in `processed-data`, then any of the figure files can be run as desired. Users should create a `neus-range-edges/results` and a `neus-range-edges/data` folder; these are not version controlled due to the size of files involved. 

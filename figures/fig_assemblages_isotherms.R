@@ -24,8 +24,8 @@ eqdat.assembl <- eqdat.stats.iso %>%
 
 ggcolors <- c('navy','#56B4E9','darkorange')
 gglines <- c('1131','1111','solid')
-gglabels1 <- c("SST Isotherm","SBT Isotherm","Poleward Edge Assemblage")
-gglabels2 <- c("SST Isotherm","SBT Isotherm","Equatorward Edge Assemblage")
+gglabels1 <- c("SST Isotherm","SBT Isotherm","Cold Edge Assemblage")
+gglabels2 <- c("SST Isotherm","SBT Isotherm","Warm Edge Assemblage")
 
 poldat.assembl.gg <- poldat.assembl %>% 
   ggplot(aes(x=year, y=value, group=grouptype)) +
@@ -68,4 +68,4 @@ eqdat.assembl.gg <- eqdat.assembl %>%
   NULL
 
 fig_assemblages_isotherms <- grid.arrange(poldat.assembl.gg, eqdat.assembl.gg, ncol=2)
-ggsave(fig3, width=11, height=5, dpi=300, filename=here("results","fig_assemblages_isotherms.png"))
+ggsave(fig_assemblages_isotherms, width=11, height=5, dpi=300, filename=here("results","fig_assemblages_isotherms.png"))

@@ -1,9 +1,12 @@
 library(tidyverse)
 library(here)
 library(ggplot2)
+library(gridExtra)
 
 poldat.stats.iso <- readRDS(here("processed-data","poldat.stats.iso.rds"))
 eqdat.stats.iso <- readRDS(here("processed-data","eqdat.stats.iso.rds"))
+poldat.stats <- readRDS(here("processed-data","poldat.stats.rds"))
+eqdat.stats <- readRDS(here("processed-data","eqdat.stats.rds"))
 
 # use the .neus files not the .stats ones because we don't want to get confused with the adjusted years for the spring survey here--just want the actual years and temperatures
 soda.summary <- read_rds(here("processed-data","soda_neus.rds")) %>% 
@@ -80,12 +83,14 @@ gg.temperature <- ggplot() +
 ggsave(plot=gg.temperature, filename=here("results","figS1.png"), scale=0.8, width=11, height=8, dpi=300)
 
 # make plots of species edges (distance) over time 
-gg.pol.edges.dist <- poldat.stats.iso %>% 
-  dplyr::select(commonname, year, spp.dist95) %>% 
+gg.pol.edges.dist <- poldat.stats %>% 
+  dplyr::select(commonname, year, spp.dist95, spp.dist95.wt) %>% 
   distinct() %>% 
-  ggplot(aes(x=year, y=spp.dist95)) +
-  geom_line(color="grey39") +
-  geom_point(size=0.75) + 
+  ggplot() +
+  geom_line(aes(x=year, y=spp.dist95), color="grey39", linetype="solid") +
+  geom_line(aes(x=year, y=spp.dist95.wt), color="grey39", linetype="dotted") +
+  geom_point(aes(x=year, y=spp.dist95), size=0.75, color="grey39") + 
+  geom_point(aes(x=year, y=spp.dist95.wt), size=0.75, color="grey39") + 
   facet_wrap(~ commonname, ncol=4) +
   theme_linedraw() +
   theme(strip.background =element_rect(fill="grey39"))+
@@ -98,12 +103,14 @@ gg.pol.edges.dist <- poldat.stats.iso %>%
 ggsave(plot=gg.pol.edges.dist, filename=here("results","figS2.png"), scale=1.2, width=11, height=7, dpi=300)
 
 
-gg.eq.edges.dist <- eqdat.stats.iso %>% 
-  dplyr::select(commonname, year, spp.dist05) %>% 
+gg.eq.edges.dist <- eqdat.stats %>% 
+  dplyr::select(commonname, year, spp.dist05, spp.dist05.wt) %>% 
   distinct() %>% 
-  ggplot(aes(x=year, y=spp.dist05)) +
-  geom_line(color="grey39") +
-  geom_point(size=0.75) + 
+  ggplot() +
+  geom_line(aes(x=year, y=spp.dist05), color="grey39", linetype="solid") +
+  geom_line(aes(x=year, y=spp.dist05.wt), color="grey39", linetype="dotted") +
+  geom_point(aes(x=year, y=spp.dist05), size=0.75, color="grey39") + 
+  geom_point(aes(x=year, y=spp.dist05.wt), size=0.75, color="grey39") +
   facet_wrap(~ commonname, ncol=4) +
   theme_linedraw() +
   theme(strip.background =element_rect(fill="grey39"))+
@@ -166,6 +173,80 @@ gg.eq.edges.iso <- eqdat.stats.iso %>%
   xlab("Year") +
   NULL
 ggsave(plot=gg.eq.edges.iso, filename=here("results","figS5.png"), scale=1.2, width=11, height=11, dpi=300)
+
+# plot assemblages over time, two ways 
+
+poldat.assembl <- poldat.stats.iso %>% 
+  group_by(year) %>%
+  mutate(mean.spp.lat95 = mean(spp.lat95)) %>%
+  ungroup() %>%
+  dplyr::select(mean.spp.lat95, assemblage.edge.lat.hadisst, assemblage.edge.lat.soda, assemblage.lat95, year) %>% 
+  distinct() %>% 
+  gather("grouptype","value",-year)
+
+poldat.assembl$grouptype <- factor(poldat.assembl$grouptype, levels=c("assemblage.edge.lat.hadisst","assemblage.edge.lat.soda","assemblage.lat95","mean.spp.lat95"))
+
+eqdat.assembl <- eqdat.stats.iso %>% 
+  group_by(year) %>%
+  mutate(mean.spp.lat05 = mean(spp.lat05)) %>%
+  ungroup() %>%
+  dplyr::select(mean.spp.lat05, assemblage.edge.lat.hadisst, assemblage.edge.lat.soda, assemblage.lat05, year) %>% 
+  distinct()%>% 
+  gather("grouptype","value",-year)
+
+eqdat.assembl$grouptype <- factor(eqdat.assembl$grouptype, levels=c("assemblage.edge.lat.hadisst","assemblage.edge.lat.soda","assemblage.lat05","mean.spp.lat05"))
+
+# make assemblage edge plots 
+# plotting help: https://community.rstudio.com/t/ggplot2-change-legend-title-while-controlling-line-types-and-colors/14966/2
+
+ggcolors <- c('navy','#56B4E9','darkorange','orangered')
+gglines <- c('1131','1111','solid','solid')
+gglabels1 <- c("SST Isotherm","SBT Isotherm","Cold Edge Assemblage","Mean Species Edge")
+gglabels2 <- c("SST Isotherm","SBT Isotherm","Warm Edge Assemblage","Mean Species Edge")
+
+poldat.assembl.gg <- poldat.assembl %>% 
+  ggplot(aes(x=year, y=value, group=grouptype)) +
+  geom_line(aes(linetype=grouptype, color=grouptype), size=1.2) +
+  scale_color_manual(values = ggcolors, labels=gglabels1) +
+  scale_linetype_manual(values = gglines, labels=gglabels1) +
+  scale_x_continuous(limits=c(1968, 2017), breaks=seq(1968, 2017, 4)) +
+  scale_y_continuous(limits=c(37, 47), breaks=seq(38, 46, 1)) +
+  labs(x="Year", y="Latitude") +
+  theme_bw() +
+  theme(legend.title=element_blank(), 
+        legend.position=c(.3, .8),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        text=element_text(family="sans",size=12,color="black"),
+        legend.text = element_text(size=12),
+        axis.title=element_text(family="sans",size=12,color="black"),
+        axis.text.x = element_text(angle = 90, hjust = 1), 
+        axis.text=element_text(family="sans",size=8,color="black")) +
+  NULL
+
+eqdat.assembl.gg <- eqdat.assembl %>% 
+  ggplot(aes(x=year, y=value, group=grouptype)) +
+  geom_line(aes(linetype=grouptype, color=grouptype), size=1.2) +
+  scale_color_manual(values = ggcolors, labels=gglabels2) +
+  scale_linetype_manual(values = gglines, labels=gglabels2) +
+  scale_x_continuous(limits=c(1968, 2017), breaks=seq(1968, 2017, 4)) +
+  scale_y_continuous(limits=c(37, 47), breaks=seq(38, 46, 1)) +
+  labs(x="Year", y="Latitude") +
+  theme_bw() +
+  theme(legend.title=element_blank(), 
+        legend.position=c(.3, .8),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        text=element_text(family="sans",size=12,color="black"),
+        legend.text = element_text(size=12),
+        axis.title=element_text(family="sans",size=12,color="black"),
+        axis.text.x = element_text(angle = 90, hjust = 1), 
+        axis.text=element_text(family="sans",size=8,color="black")) +
+  NULL
+
+fig_assemblages_isotherms <- grid.arrange(poldat.assembl.gg, eqdat.assembl.gg, ncol=2)
+ggsave(fig_assemblages_isotherms, width=11, height=5, dpi=300, filename=here("results","figS6.png"))
+
 
 # plot species depth over time
 gg.pol.depth <- poldat.stats.iso %>% 

@@ -14,7 +14,7 @@ soda.stats <- readRDS(here("processed-data","soda_stats.rds"))
 
 hadisst.stats <- readRDS(here("processed-data","hadisst_stats.rds")) 
 
-oisst.stats <- readRDS(here("processed-data","oisst_neus.rds"))
+oisst.neus <- readRDS(here("processed-data","oisst_neus.rds"))
 
 hadisst.lm.mean <- hadisst.stats %>% 
   dplyr::select(year_measured, year.month.mean, year.month.max, year.month.sd, year.month.min) %>% # use year_measured which refers to the actual year measured not the edge year to match to
@@ -23,7 +23,7 @@ hadisst.lm.mean <- hadisst.stats %>%
   lm(year.month.mean ~ year_measured, data=.) %>% 
   summary()
 
-oisst.lm.high <- oisst.stats %>% 
+oisst.lm.high <- oisst.neus %>% 
   filter(year_measured >= 1982) %>% 
   group_by(year_measured) %>% 
   mutate(year.daily.99 = quantile(sst, 0.99)) %>% 
@@ -33,7 +33,7 @@ oisst.lm.high <- oisst.stats %>%
   lm(year.daily.99 ~ year_measured, data=.) %>% 
   summary()
 
-oisst.lm.low <- oisst.stats %>% 
+oisst.lm.low <- oisst.neus %>% 
   filter(year_measured >= 1982) %>% 
   group_by(year_measured) %>% 
   mutate(year.daily.01 = quantile(sst, 0.01)) %>% 

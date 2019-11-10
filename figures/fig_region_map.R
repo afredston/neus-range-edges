@@ -37,7 +37,7 @@ coastdistrefs <- coastdistdat %>%
          coastdistround <= 1400) %>% 
   ungroup() %>% 
   dplyr::select(x, y, coastdistround)
-  
+
 # make map of the Northeast US 
 neusmap <- ggplot() + 
   geom_sf(data=usoutline, color="#999999") +
@@ -66,42 +66,9 @@ hadisst.prep <- hadisst.neus %>%
   dplyr::select(year, y, lat.year.month.mean) %>% 
   distinct()
 
-# get SST isotherms 
-
-lm.hadisst2 <- hadisst.neus %>% # this is numbered #2 to differentiate it from lms on hadisst in other scripts that nest by year_match, not year
-  nest(-year) %>% 
-  mutate(
-    model = purrr::map(data, ~lm(sst ~ y, data = .x)), 
-    tidymodel = purrr::map(model, tidy)
-  ) %>% 
-  unnest(tidymodel, .drop=TRUE) 
-
-get.had.lat2 <- function(temp, year) {
-  tmp <- lm.hadisst2[lm.hadisst2$year==year,]
-  out <- (temp-tmp[[1,3]])/tmp[[2,3]]
-  return(out)
-}
-get.had.temp2 <- function(lat, year) {
-  tmp <- lm.hadisst2[lm.hadisst2$year==year,]
-  out <- lat*tmp[[2,3]]+tmp[[1,3]]
-  return(out)
-}
-
-degrees <- seq(10, 18, 2) 
-hadisst.iso <- as.data.frame(degrees) %>% 
-  crossing(unique(hadisst.neus$year)) %>% 
-  rename(degrees = 1, year = 2) %>% 
-  rowwise() %>% 
-  mutate(est.iso.hadisst = get.had.lat2(degrees, year)) %>% 
-  filter(1968 < year,
-         year < 2017) %>% # get rid of edge years for plotting
-  mutate(degreeC = paste0(degrees, "°"))
-
 # make colored grid 
 sstgrid <- ggplot() + 
   geom_raster(data=hadisst.prep, aes(x=year, y=y, fill=lat.year.month.mean)) + 
-  geom_line(data=hadisst.iso, aes(x=year, y=est.iso.hadisst, group=degreeC)) +
-  geom_dl(data=hadisst.iso, aes(x=year, y=est.iso.hadisst, group=degreeC, label=degreeC), method=list(dl.trans(x = x + 0.5, y = y + 0.3, cex=0.8), "first.points")) +
   scale_fill_gradientn(colors=c("blue3","darkturquoise", "gold", "orangered", "red3"), limits = c(7,22), breaks = c(seq(8, 22, 2)),
                        guide = guide_colourbar(nbin=100, draw.ulim = FALSE, draw.llim = FALSE)) + 
   scale_x_continuous(limits = c(1968, 2017), breaks=seq(1968, 2017, 4), expand = c(0, 0)) +
