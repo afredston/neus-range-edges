@@ -2,7 +2,8 @@ library(here)
 library(tidyverse)
 library(purrr)
 library(broom)
-library(lme4)
+library(broom.mixed)
+library(lmerTest)
 
 poldat.stats.iso <- readRDS(here("processed-data","poldat.stats.iso.rds")) %>% 
 mutate(year = as.numeric(year)) 
@@ -25,14 +26,16 @@ hadisst.stats.summary <- hadisst.stats %>%
 
 oisst.extremes <- readRDS(here("processed-data","oisst_neus.rds")) %>% 
   filter(year_match > 1982) %>% 
+  group_by(time) %>% 
+  mutate(day.mean.sst = mean(sst)) %>% # calculate mean temperature across entire region on that day
+  ungroup() %>%
   group_by(year_match) %>% 
-  mutate(
-    year.daily.mean = mean(sst),
-    year.daily.99 = quantile(sst, 0.99),
-    year.daily.01 = quantile(sst, 0.01)
+  mutate( # calculate 1st and 99th percentiles of regional daily temps
+    year.daily.99 = quantile(day.mean.sst, 0.99),
+    year.daily.01 = quantile(day.mean.sst, 0.01)
   ) %>% 
   ungroup() %>% 
-  dplyr::select(year_match, year.daily.99, year.daily.01, year.daily.mean) %>% 
+  dplyr::select(year_match, year.daily.99, year.daily.01) %>% 
   distinct()
 
 all.temp.df <- soda.stats.summary %>% 
@@ -41,10 +44,10 @@ all.temp.df <- soda.stats.summary %>%
   left_join(oisst.extremes, by="year_match") 
 
 #################
-# LM: edge ~ time 
+# single-species LMs
 #################
 
-poldat.lm <- poldat.stats.iso %>% 
+poldat.lm.time <- poldat.stats.iso %>% 
   dplyr::select(latinname, commonname, spp.dist95, year) %>% 
   distinct() %>% 
   group_by(commonname) %>% 
@@ -53,10 +56,13 @@ poldat.lm <- poldat.stats.iso %>%
     model = purrr::map(data, ~lm(spp.dist95 ~ year, data = .x)), 
     tidymodel = purrr::map(model, tidy)
   ) %>% 
-  unnest(tidymodel, .drop=TRUE) %>% 
-  filter(term=="year")
+  unnest(tidymodel)  %>% 
+  filter(!term=="(Intercept)") %>%
+  select(-data) %>%
+  ungroup()%>% 
+  mutate(model = as.character(model)) # necessary for saving the file 
 
-eqdat.lm <- eqdat.stats.iso %>% 
+eqdat.lm.time <- eqdat.stats.iso %>% 
   dplyr::select(latinname, commonname, spp.dist05, year) %>% 
   distinct() %>% 
   group_by(commonname) %>% 
@@ -65,14 +71,83 @@ eqdat.lm <- eqdat.stats.iso %>%
     model = purrr::map(data, ~lm(spp.dist05 ~ year, data = .x)), 
     tidymodel = purrr::map(model, tidy)
   ) %>% 
-  unnest(tidymodel, .drop=TRUE) %>% 
-  filter(term=="year")
+  unnest(tidymodel)  %>% 
+  filter(!term=="(Intercept)") %>%
+  select(-data) %>%
+  ungroup()%>% 
+  mutate(model = as.character(model)) # necessary for saving the file 
+
+poldat.lm.sst <- poldat.stats.iso %>% 
+  dplyr::select(latinname, commonname, spp.dist95, est.edge.lat.hadisst) %>% 
+  distinct() %>% 
+  group_by(commonname) %>% 
+  nest() %>% 
+  mutate(
+    model = purrr::map(data, ~lm(spp.dist95 ~ est.edge.lat.hadisst, data = .x)), 
+    tidymodel = purrr::map(model, tidy)
+  ) %>% 
+  unnest(tidymodel) %>% 
+  filter(!term=="(Intercept)") %>%
+  select(-data) %>%
+  ungroup()%>% 
+  mutate(model = as.character(model)) # necessary for saving the file 
+
+eqdat.lm.sst <- eqdat.stats.iso %>% 
+  dplyr::select(latinname, commonname, spp.dist05, est.edge.lat.hadisst) %>% 
+  distinct() %>% 
+  group_by(commonname) %>% 
+  nest() %>% 
+  mutate(
+    model = purrr::map(data, ~lm(spp.dist05 ~ est.edge.lat.hadisst, data = .x)), 
+    tidymodel = purrr::map(model, tidy)
+  ) %>% 
+  unnest(tidymodel)  %>% 
+  filter(!term=="(Intercept)") %>%
+  select(-data) %>%
+  ungroup()%>% 
+  mutate(model = as.character(model)) # necessary for saving the file 
+
+poldat.lm.sbt <- poldat.stats.iso %>% 
+  dplyr::select(latinname, commonname, spp.dist95, est.edge.lat.soda) %>% 
+  distinct() %>% 
+  group_by(commonname) %>% 
+  nest() %>% 
+  mutate(
+    model = purrr::map(data, ~lm(spp.dist95 ~ est.edge.lat.soda, data = .x)), 
+    tidymodel = purrr::map(model, tidy)
+  ) %>% 
+  unnest(tidymodel)  %>% 
+  filter(!term=="(Intercept)") %>%
+  select(-data) %>%
+  ungroup()%>% 
+  mutate(model = as.character(model)) # necessary for saving the file 
+
+eqdat.lm.sbt <- eqdat.stats.iso %>% 
+  dplyr::select(latinname, commonname, spp.dist05, est.edge.lat.soda) %>% 
+  distinct() %>% 
+  group_by(commonname) %>% 
+  nest() %>% 
+  mutate(
+    model = purrr::map(data, ~lm(spp.dist05 ~ est.edge.lat.soda, data = .x)), 
+    tidymodel = purrr::map(model, tidy)
+  ) %>% 
+  unnest(tidymodel) %>% 
+  filter(!term=="(Intercept)") %>%
+  select(-data) %>%
+  ungroup()%>% 
+  mutate(model = as.character(model)) # necessary for saving the file 
+
+poldat.lm.results <- rbind(poldat.lm.time, poldat.lm.sbt, poldat.lm.sst)
+write_csv(poldat.lm.results, here("results","poleward_edge_results.csv"))
+
+eqdat.lm.results <- rbind(eqdat.lm.time, eqdat.lm.sst, eqdat.lm.sbt)
+write_csv(eqdat.lm.results, here("results","equatorward_edge_results.csv"))
 
 #################
-# LM: assemblage ~ time   
+# assemblages over time
 #################
 
-poldat.assemblage.lm <- poldat.stats.iso %>% 
+poldat.assemblage.lm.time <- poldat.stats.iso %>% 
   dplyr::select(year, assemblage.dist95) %>% 
   distinct() %>% 
   mutate(commonname = "ASSEMBLAGE") %>% 
@@ -82,12 +157,10 @@ poldat.assemblage.lm <- poldat.stats.iso %>%
     model = purrr::map(data, ~lm(assemblage.dist95 ~ year, data = .x)), 
     tidymodel = purrr::map(model, tidy)
   ) %>% 
-  unnest(tidymodel, .drop=TRUE) %>% 
-  filter(term=="year")
-poldat.lm.results <- rbind(poldat.lm, poldat.assemblage.lm)
-write_csv(poldat.lm.results, here("results","poleward_edges_time.csv"))
+unnest(tidymodel) %>% 
+  select(-data)
 
-eqdat.assemblage.lm <- eqdat.stats.iso %>% 
+eqdat.assemblage.lm.time <- eqdat.stats.iso %>% 
   dplyr::select(year, assemblage.dist05) %>% 
   distinct() %>% 
   mutate(commonname = "ASSEMBLAGE") %>% 
@@ -97,100 +170,99 @@ eqdat.assemblage.lm <- eqdat.stats.iso %>%
     model = purrr::map(data, ~lm(assemblage.dist05 ~ year, data = .x)), 
     tidymodel = purrr::map(model, tidy)
   ) %>% 
-  unnest(tidymodel, .drop=TRUE) %>% 
-  filter(term=="year")
-eqdat.lm.results <- rbind(eqdat.lm, eqdat.assemblage.lm)
-write_csv(eqdat.lm.results, here("results","equatorward_edges_time.csv"))
+  unnest(tidymodel) %>% 
+  select(-data)
 
 #################
-# models of edges and temperature
+# assemblages vs temperature
 #################
 
-# shelf-wide GLMs 
+# shelf-wide LMs 
 
 # set up dataframes with edge data and corresponding temperatures
-poldat.glm.df <- poldat.stats.iso %>% 
+poldat.pooled.lm.df <- poldat.stats.iso %>% 
   dplyr::select(year, assemblage.dist95) %>% 
   distinct() %>% 
   left_join(all.temp.df, by=c('year'='year_match')) 
-eqdat.glm.df <- eqdat.stats.iso %>% 
+eqdat.pooled.lm.df <- eqdat.stats.iso %>% 
   dplyr::select(year, assemblage.dist05) %>% 
   distinct() %>% 
   left_join(all.temp.df, by=c('year'='year_match')) 
 
-# set up list of models for GLMs with distance as response var
-pol.glm.list <- list(
+# set up list of models for LMs with distance as response var
+pol.pooled.lm.list <- list(
   soda <- "assemblage.dist95 ~ soda.year.month.mean",
   had <- "assemblage.dist95 ~ year.month.mean",
-  full <- "assemblage.dist95 ~ soda.year.month.mean + year.daily.mean + year.daily.99 + year.daily.01 + soda.year.month.mean*year.daily.mean + year.daily.mean*year.daily.99"
+  cold <- "assemblage.dist95 ~ year.daily.01",
+  warm <- "assemblage.dist95 ~ year.daily.99"
 )
 
-eq.glm.list <- list(
+eq.pooled.lm.list <- list(
   soda <- "assemblage.dist05 ~ soda.year.month.mean",
   had <- "assemblage.dist05 ~ year.month.mean",
-  full <- "assemblage.dist05 ~ soda.year.month.mean + year.daily.mean + year.daily.99 + year.daily.01 + soda.year.month.mean*year.daily.mean + year.daily.mean*year.daily.99"
+  cold <- "assemblage.dist05 ~ year.daily.01",
+  warm <- "assemblage.dist05 ~ year.daily.99"
 )
 
-## run all GLMs and extract the outputs in a table with AICs 
-pol.glm.frame <- tibble(model = pol.glm.list) %>%
+## run all LMs and extract the outputs in a table with AICs 
+pol.pooled.lm.results <- tibble(model = pol.pooled.lm.list) %>%
   mutate(model.name = names(model),
          model = map(model, as.formula),
-         fit = map(model, ~glm(., data = poldat.glm.df)),
+         fit = map(model, ~lm(., data = poldat.pooled.lm.df)),
          aic = map_dbl(fit, ~AIC(.)), 
          tidymodel = map(fit, tidy)) %>% 
-  unnest(tidymodel, .drop=FALSE) %>% 
-  dplyr::select(-fit)
+  unnest(tidymodel) %>% 
+  select(-fit) 
 
-eq.glm.frame <- tibble(model = eq.glm.list) %>%
+eq.pooled.lm.results <- tibble(model = eq.pooled.lm.list) %>%
   mutate(model.name = names(model),
          model = map(model, as.formula),
-         fit = map(model, ~glm(., data = eqdat.glm.df)),
+         fit = map(model, ~lm(., data = eqdat.pooled.lm.df)),
          aic = map_dbl(fit, ~AIC(.)), 
          tidymodel = map(fit, tidy)) %>% 
-  unnest(tidymodel, .drop=FALSE) %>% 
-  dplyr::select(-fit)
+  unnest(tidymodel) %>% 
+  select(-fit)
 
-# Isotherm GLMs
+# Isotherm assemblage LMs
 
 # make dataframes 
-poldat.glm.df.iso <- poldat.stats.iso %>% 
+poldat.pooled.lm.df.iso <- poldat.stats.iso %>% 
   dplyr::select(year, assemblage.lat95, assemblage.edge.lat.hadisst, assemblage.edge.lat.soda) %>% 
   distinct() 
 
-eqdat.glm.df.iso <- eqdat.stats.iso %>% 
+eqdat.pooled.lm.df.iso <- eqdat.stats.iso %>% 
   dplyr::select(year, assemblage.lat05, assemblage.edge.lat.hadisst, assemblage.edge.lat.soda) %>% 
   distinct() 
 
 # make model lists 
-pol.iso.glm.list <- list(
+pol.pooled.lm.list.iso <- list(
   soda <- "assemblage.lat95 ~ assemblage.edge.lat.soda",
   had <- "assemblage.lat95 ~ assemblage.edge.lat.hadisst"
 )
 
-eq.iso.glm.list <- list(
+eq.pooled.lm.list.iso <- list(
   soda <- "assemblage.lat05 ~ assemblage.edge.lat.soda",
   had <- "assemblage.lat05 ~ assemblage.edge.lat.hadisst"
 )
 
-
-## run all GLMs and extract the outputs in a table with AICs 
-pol.iso.glm.frame <- tibble(model = pol.iso.glm.list) %>%
+## run all LMs and extract the outputs in a table with AICs 
+pol.pooled.lm.results.iso <- tibble(model = pol.pooled.lm.list.iso) %>%
   mutate(model.name = names(model),
          model = map(model, as.formula),
-         fit = map(model, ~glm(., data = poldat.glm.df.iso)),
+         fit = map(model, ~lm(., data = poldat.pooled.lm.df.iso)),
          aic = map_dbl(fit, ~AIC(.)), 
          tidymodel = map(fit, tidy)) %>% 
-  unnest(tidymodel, .drop=FALSE) %>% 
-  dplyr::select(-fit)
+  unnest(tidymodel) %>% 
+  select(-fit) 
 
-eq.iso.glm.frame <- tibble(model = eq.iso.glm.list) %>%
+eq.pooled.lm.results.iso <- tibble(model = eq.pooled.lm.list.iso) %>%
   mutate(model.name = names(model),
          model = map(model, as.formula),
-         fit = map(model, ~glm(., data = eqdat.glm.df.iso)),
+         fit = map(model, ~lm(., data = eqdat.pooled.lm.df.iso)),
          aic = map_dbl(fit, ~AIC(.)), 
          tidymodel = map(fit, tidy)) %>% 
-  unnest(tidymodel, .drop=FALSE) %>% 
-  dplyr::select(-fit)
+  unnest(tidymodel) %>% 
+  select(-fit)
 
 # Isotherm LMEs 
 
@@ -213,63 +285,34 @@ eq.iso.lme.list <- list(
 )
 
 # run all LMEMs and extract the outputs in a table with AICs 
-pol.iso.lme.frame <- tibble(model = pol.iso.lme.list) %>%
+pol.iso.lme.results <- tibble(model = pol.iso.lme.list) %>%
   mutate(model.name = names(model),
          model = map(model, as.formula),
-         fit = map(model, ~lmer(., data = pol.lme.df.iso)),
+         fit = map(model, ~lmerTest::lmer(., data = pol.lme.df.iso)),
          aic = map_dbl(fit, ~AIC(.)), 
-         tidymodel = map(fit, tidy)) %>% 
-  unnest(tidymodel, .drop=FALSE) %>% 
-  dplyr::select(-fit) %>% 
-  mutate(p.value = NA) # for joining to results df 
+         tidymodel = map(fit, broom.mixed::tidy)) %>% 
+  unnest(tidymodel) %>% 
+  dplyr::select(-fit) 
 
-eq.iso.lme.frame <- tibble(model = eq.iso.lme.list) %>%
+eq.iso.lme.results <- tibble(model = eq.iso.lme.list) %>%
   mutate(model.name = names(model),
          model = map(model, as.formula),
          fit = map(model, ~lmer(., data = eq.lme.df.iso)),
          aic = map_dbl(fit, ~AIC(.)), 
          tidymodel = map(fit, tidy)) %>% 
-  unnest(tidymodel, .drop=FALSE) %>% 
-  dplyr::select(-fit)%>% 
-  mutate(p.value = NA) # for joining to results df 
+  unnest(tidymodel) %>% 
+  dplyr::select(-fit)
 
-# Make results data frame with all model results 
-poldat.results.df <- rbind(pol.glm.frame, pol.iso.glm.frame) %>% 
-  mutate(group = NA) %>% 
-  rbind(pol.iso.lme.frame) %>% 
+# Make results data frame with all assemblage model results 
+poldat.results.df <- rbind(pol.pooled.lm.results, pol.pooled.lm.results.iso) %>% 
+  mutate(group = NA, effect = NA, df=NA) %>% 
+  rbind(pol.iso.lme.results) %>% 
   mutate(model = as.character(model)) # necessary for saving the file 
 
-eqdat.results.df <- rbind(eq.glm.frame, eq.iso.glm.frame) %>% 
-  mutate(group = NA) %>% 
-  rbind(eq.iso.lme.frame)%>% 
+eqdat.results.df <- rbind(eq.pooled.lm.results, eq.pooled.lm.results.iso) %>% 
+  mutate(group = NA, effect = NA, df=NA) %>% 
+  rbind(eq.iso.lme.results) %>% 
   mutate(model = as.character(model)) # necessary for saving the file 
 
 write_csv(poldat.results.df, here("results","poleward_assemblage_models.csv"))
 write_csv(eqdat.results.df, here("results","equatorward_assemblage_models.csv"))
-
-
-# Species isotherms 
-
-eqdat.iso.lm <- eqdat.stats.iso %>% 
-  dplyr::select(latinname, commonname, spp.lat05, est.edge.lat.soda) %>% 
-  distinct() %>% 
-  group_by(commonname) %>% 
-  nest() %>% 
-  mutate(
-    model = map(data, ~lm(spp.lat05 ~ est.edge.lat.soda, data = .x)), 
-    tidymodel = map(model, tidy)
-  ) %>% 
-  unnest(tidymodel, .drop=TRUE) %>% 
-  filter(term=="est.edge.lat.soda")
-
-poldat.iso.lm <- poldat.stats.iso %>% 
-  dplyr::select(latinname, commonname, spp.lat95, est.edge.lat.soda) %>% 
-  distinct() %>% 
-  group_by(commonname) %>% 
-  nest() %>% 
-  mutate(
-    model = map(data, ~lm(spp.lat95 ~ est.edge.lat.soda, data = .x)), 
-    tidymodel = map(model, tidy)
-  ) %>% 
-  unnest(tidymodel, .drop=TRUE) %>% 
-  filter(term=="est.edge.lat.soda")

@@ -8,6 +8,7 @@ eqdat.stats <- readRDS(here("processed-data","eqdat.stats.rds"))
 
 pol.ex <- poldat.stats %>% 
   filter(commonname=="Black seabass") %>% 
+  mutate(commonname=recode(commonname, "Black seabass" = "Black sea bass")) %>% 
   dplyr::select(year, spp.dist95, commonname) %>% 
   distinct() %>% 
   rename(edge.dist = spp.dist95) %>% 
@@ -25,8 +26,8 @@ anndf <- data.frame(x=rep(1968, 2), y=rep(1150, 2), commonname=unique(exdf$commo
 
 gg.spp.ex <- exdf %>% 
   ggplot(aes(x=year, y=edge.dist)) + 
-  geom_line(color="darkorange") + 
-  geom_point(color="darkorange",size=0.75) + 
+  geom_line(color="#FF8E02") + 
+  geom_point(color="#FF8E02",size=0.75) + 
   labs(x="Year", y="Edge Position (km)") +
   facet_wrap(~commonname, ncol=1) + 
   geom_text(data=anndf, aes(x=x, y=y, label=commonname), hjust=0) +

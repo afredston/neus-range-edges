@@ -103,8 +103,8 @@ poldat.depth.lm <- poldat.stats.iso %>%
   group_by(commonname) %>% 
   nest() %>% 
   mutate(
-    model = map(data, ~lm(depth.mean.wt ~ year, data = .x)), 
-    tidymodel = map(model, tidy)
+    model = purrr::map(data, ~lm(depth.mean.wt ~ year, data = .x)), 
+    tidymodel = purrr::map(model, tidy)
   ) %>% 
   unnest(tidymodel, .drop=TRUE) %>% 
   filter(term=="year")
@@ -115,12 +115,11 @@ eqdat.depth.lm <- eqdat.stats.iso %>%
   group_by(commonname) %>% 
   nest() %>% 
   mutate(
-    model = map(data, ~lm(depth.mean.wt ~ year, data = .x)), 
-    tidymodel = map(model, tidy)
+    model = purrr::map(data, ~lm(depth.mean.wt ~ year, data = .x)), 
+    tidymodel = purrr::map(model, tidy)
   ) %>% 
   unnest(tidymodel, .drop=TRUE) %>% 
   filter(term=="year")
-
 
 poldat.abund.lm <- poldat.stats.iso %>% 
   dplyr::select(latinname, commonname, biomass.correct.kg, year) %>% 
@@ -129,8 +128,8 @@ poldat.abund.lm <- poldat.stats.iso %>%
   group_by(commonname) %>% 
   nest() %>% 
   mutate(
-    model = map(data, ~lm(biomass.correct.mt ~ year, data = .x)), 
-    tidymodel = map(model, tidy)
+    model = purrr::map(data, ~lm(biomass.correct.mt ~ year, data = .x)), 
+    tidymodel = purrr::map(model, tidy)
   ) %>% 
   unnest(tidymodel, .drop=TRUE) %>% 
   filter(term=="year")
@@ -142,8 +141,8 @@ eqdat.abund.lm <- eqdat.stats.iso %>%
   group_by(commonname) %>% 
   nest() %>% 
   mutate(
-    model = map(data, ~lm(biomass.correct.mt ~ year, data = .x)), 
-    tidymodel = map(model, tidy)
+    model = purrr::map(data, ~lm(biomass.correct.mt ~ year, data = .x)), 
+    tidymodel = purrr::map(model, tidy)
   ) %>% 
   unnest(tidymodel, .drop=TRUE) %>% 
   filter(term=="year")

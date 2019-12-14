@@ -41,7 +41,7 @@ coastdistrefs <- coastdistdat %>%
 # make map of the Northeast US 
 neusmap <- ggplot() + 
   geom_sf(data=usoutline, color="#999999") +
-  geom_sf(data=smoothline, size=2, color="#0072B2") + 
+  geom_sf(data=smoothline, size=2, color="#3A4ED0") + 
   geom_point(data=coastdistrefs, aes(x=x, y=y), color="black") +
   geom_text(data=coastdistrefs, aes(x=x, y=y, label=coastdistround),hjust=0, nudge_x = 0.5, fontface="bold", size=3) +
   scale_x_continuous(limits = c(-78, -65), expand = c(0, 0)) +
@@ -66,9 +66,55 @@ hadisst.prep <- hadisst.neus %>%
   dplyr::select(year, y, lat.year.month.mean) %>% 
   distinct()
 
+# get SST isotherms 
+
+lm.hadisst2 <- hadisst.neus %>% # this is numbered #2 to differentiate it from lms on hadisst in other scripts that nest by year_match, not year
+  group_by(year) %>%
+  nest() %>%
+  mutate(
+    model = purrr::map(data, ~lm(sst ~ y, data = .x)), 
+    tidymodel = purrr::map(model, tidy)
+  ) %>% 
+  unnest(tidymodel) %>%
+  dplyr::select(-data, -model)
+
+# manually calculating isotherms from year-specific lm
+get.had.lat2 <- function(temp, year.predict) {
+  tmp <- lm.hadisst2 %>% filter(year==year.predict)
+  intercept <- tmp %>% filter(term=="(Intercept)") %>%
+    pull(estimate)
+  slope <- tmp %>% filter(term=="y") %>%
+    pull(estimate)
+  out <- (temp-intercept)/slope
+  return(out)
+}
+get.had.temp2 <- function(lat, year.predict) {
+  tmp <- lm.hadisst2 %>% filter(year==year.predict)
+  intercept <- tmp %>% filter(term=="(Intercept)") %>%
+    pull(estimate)
+  slope <- tmp %>% filter(term=="y") %>%
+    pull(estimate)
+  out <- lat*slope+intercept
+  return(out)
+}
+
+degrees <- seq(10, 18, 2) 
+hadisst.iso <- as.data.frame(degrees) %>% 
+  crossing(unique(hadisst.neus$year)) %>% 
+  rename(degrees = 1, year = 2) %>% 
+  rowwise() %>% 
+  mutate(est.iso.hadisst = get.had.lat2(degrees, year)) %>% 
+  filter(1968 < year,
+         year < 2017) %>% # get rid of edge years for plotting
+  mutate(degreeC = paste0(degrees, "°"))
+
+write_rds(hadisst.iso, path=here("processed-data","hadisst_isotherms_time.rds"))
+
 # make colored grid 
 sstgrid <- ggplot() + 
   geom_raster(data=hadisst.prep, aes(x=year, y=y, fill=lat.year.month.mean)) + 
+  geom_line(data=hadisst.iso, aes(x=year, y=est.iso.hadisst, group=degreeC)) +
+  geom_dl(data=hadisst.iso, aes(x=year, y=est.iso.hadisst, group=degreeC, label=degreeC), method=list(dl.trans(x = x + 0.5, y = y + 0.3, cex=0.8), "first.points")) +
   scale_fill_gradientn(colors=c("blue3","darkturquoise", "gold", "orangered", "red3"), limits = c(7,22), breaks = c(seq(8, 22, 2)),
                        guide = guide_colourbar(nbin=100, draw.ulim = FALSE, draw.llim = FALSE)) + 
   scale_x_continuous(limits = c(1968, 2017), breaks=seq(1968, 2017, 4), expand = c(0, 0)) +
@@ -84,5 +130,63 @@ sstgrid <- ggplot() +
   guides(fill = guide_colourbar(barwidth = 0.75, barheight = 25, title="SST", reverse=TRUE)) +
   NULL
 
+sstmean <- hadisst.summary <- read_rds(here("processed-data","hadisst_neus.rds"))%>% 
+  group_by(year) %>% 
+  mutate(value = mean(sst)) %>% 
+  ungroup() %>% 
+  mutate(source="Mean SST") %>%
+  dplyr::select(year, value, source) %>% 
+  distinct() %>%
+  filter(year<2018)
+
+sst99 <- read_rds(here("processed-data","oisst_neus.rds")) %>% 
+  dplyr::select(-altitude, -bathymetry) %>% 
+  group_by(time) %>% 
+  mutate(day.mean.sst = mean(sst)) %>% # calculate mean temperature across entire region on that day
+  ungroup() %>%
+  group_by(year) %>% 
+  mutate(value = quantile(day.mean.sst, 0.99)  ) %>% 
+  ungroup() %>% 
+  mutate(source="99% SST") %>%
+  dplyr::select(year, value, source) %>%
+  distinct() 
+
+sst01 <- read_rds(here("processed-data","oisst_neus.rds")) %>% 
+  dplyr::select(-altitude, -bathymetry) %>% 
+  group_by(time) %>% 
+  mutate(day.mean.sst = mean(sst)) %>% # calculate mean temperature across entire region on that day
+  ungroup() %>%
+  group_by(year) %>% 
+  mutate(value = quantile(day.mean.sst, 0.01)  ) %>% 
+  ungroup() %>% 
+  mutate(source="1% SST") %>%
+  dplyr::select(year, value, source) %>%
+  distinct() 
+
+sstdf <- rbind(sstmean, sst99, sst01) %>%
+  mutate(source = factor(source, levels=c("1% SST","Mean SST","99% SST")))
+
+# manual dataframe for annotating plot 
+anndf <- data.frame(x=rep(1976, 3), y=c(7.2, 14.9, 23), source=c("1% SST","Mean SST","99% SST"))
+
+sstgg <- ggplot() +
+  geom_line(data=sstdf, aes(x=year, y=value, color=source)) +
+  facet_wrap(~source, ncol=1, scales="free_y") +
+  geom_text(data=anndf, aes(x=x, y=y, label=source), hjust=0) +
+  scale_color_manual(values=c("#3A4ED0","#FF8E02","#DF2301")) +
+  scale_x_continuous(limits = c(1967, 2018), breaks=seq(1968, 2017, 4), expand = c(0, 0)) +
+  labs(x="Year", y="Temperature (°C)") +
+  theme_bw() +
+  theme(text=element_text(family="sans",size=12,color="black"),
+        legend.position="none",
+        axis.text=element_text(family="sans",size=8,color="black"), 
+        axis.text.x = element_text(angle = 90, hjust = 1), 
+        axis.title=element_text(family="sans",size=12,color="black"),
+        strip.text.x = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank()) + 
+  NULL
+
 neusfig <- grid.arrange(neusmap, sstgrid, ncol=2)
 ggsave(neusfig, filename=here("results","fig_region_map.png"),width=11, height=8, dpi=300, scale=0.75)
+ggsave(sstgg, filename=here("results","fig_region_sst.png"),width=3.7, height=8, dpi=300, scale=0.75 )
