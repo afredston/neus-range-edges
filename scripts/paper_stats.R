@@ -16,6 +16,8 @@ hadisst.stats <- readRDS(here("processed-data","hadisst_stats.rds"))
 
 oisst.neus <- readRDS(here("processed-data","oisst_neus.rds"))
 
+hadisst.isotherms <- readRDS(here("processed-data","hadisst_isotherms_time.rds"))
+
 hadisst.lm.mean <- hadisst.stats %>% 
   dplyr::select(year_measured, year.month.mean, year.month.max, year.month.sd, year.month.min) %>% # use year_measured which refers to the actual year measured not the edge year to match to
   distinct() %>% 
@@ -24,23 +26,27 @@ hadisst.lm.mean <- hadisst.stats %>%
   summary()
 
 oisst.lm.high <- oisst.neus %>% 
-  filter(year_measured >= 1982) %>% 
-  group_by(year_measured) %>% 
-  mutate(year.daily.99 = quantile(sst, 0.99)) %>% 
+  group_by(time) %>% 
+  mutate(day.mean.sst = mean(sst)) %>% 
+  ungroup() %>%
+  group_by(year) %>% 
+  mutate(year.daily.99 = quantile(day.mean.sst, 0.99)) %>% 
   ungroup() %>% 
-  dplyr::select(year_measured, year.daily.99) %>% 
+  dplyr::select(year, year.daily.99) %>% 
   distinct() %>% 
-  lm(year.daily.99 ~ year_measured, data=.) %>% 
+  lm(year.daily.99 ~ year, data=.) %>% 
   summary()
 
 oisst.lm.low <- oisst.neus %>% 
-  filter(year_measured >= 1982) %>% 
-  group_by(year_measured) %>% 
-  mutate(year.daily.01 = quantile(sst, 0.01)) %>% 
+  group_by(time) %>% 
+  mutate(day.mean.sst = mean(sst)) %>% 
+  ungroup() %>%
+  group_by(year) %>% 
+  mutate(year.daily.01 = quantile(day.mean.sst, 0.01)) %>% 
   ungroup() %>% 
-  dplyr::select(year_measured, year.daily.01) %>% 
+  dplyr::select(year, year.daily.01) %>% 
   distinct() %>% 
-  lm(year.daily.01 ~ year_measured, data=.) %>% 
+  lm(year.daily.01 ~ year, data=.) %>% 
   summary()
 
 soda.lm.mean <- soda.stats %>% 
@@ -48,6 +54,17 @@ soda.lm.mean <- soda.stats %>%
   distinct() %>% 
   lm(year.month.mean ~ year_measured, data=.) %>% 
   summary()
+
+isotherm.shifts <- hadisst.isotherms %>%
+  group_by(degrees) %>% 
+  nest() %>% 
+  mutate(
+    model = purrr::map(data, ~lm(est.iso.hadisst ~ year, data = .x)), 
+    tidymodel = purrr::map(model, tidy)
+  ) %>% 
+  unnest(tidymodel, .drop=TRUE) %>% 
+  filter(term=="year") %>%
+  dplyr::select(-data, -model)
 
 ###################
 # 2. Survey data 
@@ -97,6 +114,7 @@ poldat.stats.iso <- readRDS(here("processed-data","poldat.stats.iso.rds")) %>%
 eqdat.stats.iso <- readRDS(here("processed-data","eqdat.stats.iso.rds")) %>% 
   mutate(year = as.numeric(year)) 
 
+#changes in depth over time
 poldat.depth.lm <- poldat.stats.iso %>% 
   dplyr::select(latinname, commonname, depth.mean.wt, year) %>% 
   distinct() %>% 
@@ -106,7 +124,7 @@ poldat.depth.lm <- poldat.stats.iso %>%
     model = purrr::map(data, ~lm(depth.mean.wt ~ year, data = .x)), 
     tidymodel = purrr::map(model, tidy)
   ) %>% 
-  unnest(tidymodel, .drop=TRUE) %>% 
+  unnest(tidymodel) %>% 
   filter(term=="year")
 
 eqdat.depth.lm <- eqdat.stats.iso %>% 
@@ -118,9 +136,10 @@ eqdat.depth.lm <- eqdat.stats.iso %>%
     model = purrr::map(data, ~lm(depth.mean.wt ~ year, data = .x)), 
     tidymodel = purrr::map(model, tidy)
   ) %>% 
-  unnest(tidymodel, .drop=TRUE) %>% 
+  unnest(tidymodel) %>% 
   filter(term=="year")
 
+# changes in biomass over time
 poldat.abund.lm <- poldat.stats.iso %>% 
   dplyr::select(latinname, commonname, biomass.correct.kg, year) %>% 
   distinct() %>% 
@@ -131,7 +150,7 @@ poldat.abund.lm <- poldat.stats.iso %>%
     model = purrr::map(data, ~lm(biomass.correct.mt ~ year, data = .x)), 
     tidymodel = purrr::map(model, tidy)
   ) %>% 
-  unnest(tidymodel, .drop=TRUE) %>% 
+  unnest(tidymodel) %>% 
   filter(term=="year")
 
 eqdat.abund.lm <- eqdat.stats.iso %>% 
@@ -144,5 +163,62 @@ eqdat.abund.lm <- eqdat.stats.iso %>%
     model = purrr::map(data, ~lm(biomass.correct.mt ~ year, data = .x)), 
     tidymodel = purrr::map(model, tidy)
   ) %>% 
+  unnest(tidymodel) %>% 
+  filter(term=="year")
+
+# changes in depth vs edge
+poldat.lm <- poldat.stats.iso %>% 
+  dplyr::select(latinname, commonname, spp.dist95, year) %>% 
+  distinct() %>% 
+  group_by(commonname) %>% 
+  nest() %>% 
+  mutate(
+    model = map(data, ~lm(spp.dist95 ~ year, data = .x)), 
+    tidymodel = map(model, tidy)
+  ) %>% 
   unnest(tidymodel, .drop=TRUE) %>% 
   filter(term=="year")
+
+eqdat.lm <- eqdat.stats.iso %>% 
+  dplyr::select(latinname, commonname, spp.dist05, year) %>% 
+  distinct() %>% 
+  group_by(commonname) %>% 
+  nest() %>% 
+  mutate(
+    model = map(data, ~lm(spp.dist05 ~ year, data = .x)), 
+    tidymodel = map(model, tidy)
+  ) %>% 
+  unnest(tidymodel, .drop=TRUE) %>% 
+  filter(term=="year")
+
+poldat.edge.depth <- poldat.depth.lm %>%
+  rename(depth.coeff = estimate) %>%
+  left_join(poldat.lm %>% select(commonname, estimate), by="commonname") %>%
+  rename(edge.coeff = estimate) %>%
+  select(commonname, depth.coeff, edge.coeff)
+
+cor.test(poldat.edge.depth$depth.coeff, poldat.edge.depth$edge.coeff, method="spearman")
+
+eqdat.edge.depth <- eqdat.depth.lm %>%
+  rename(depth.coeff = estimate) %>%
+  left_join(eqdat.lm %>% select(commonname, estimate), by="commonname") %>%
+  rename(edge.coeff = estimate) %>%
+  select(commonname, depth.coeff, edge.coeff)
+
+cor.test(eqdat.edge.depth$depth.coeff, eqdat.edge.depth$edge.coeff, method="spearman")
+
+poldat.edge.abund <- poldat.abund.lm %>%
+  rename(abund.coeff = estimate) %>%
+  left_join(poldat.lm %>% select(commonname, estimate), by="commonname") %>%
+  rename(edge.coeff = estimate) %>%
+  select(commonname, abund.coeff, edge.coeff)
+
+cor.test(poldat.edge.abund$abund.coeff, poldat.edge.abund$edge.coeff, method="spearman")
+
+eqdat.edge.abund <- eqdat.abund.lm %>%
+  rename(abund.coeff = estimate) %>%
+  left_join(eqdat.lm %>% select(commonname, estimate), by="commonname") %>%
+  rename(edge.coeff = estimate) %>%
+  select(commonname, abund.coeff, edge.coeff)
+
+cor.test(eqdat.edge.abund$abund.coeff, eqdat.edge.abund$edge.coeff, method="spearman")
