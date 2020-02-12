@@ -61,7 +61,7 @@ eqspp.gg.time <- eqdat.lm.time %>%
   scale_color_manual(values=c('p < 0.05'='#C7361D','p > 0.05'='grey85')) +
   geom_hline(yintercept=0, color="black") +
   labs(x=NULL, y="Edge Shift (km/yr) \n                 ") +
-  scale_y_continuous(breaks=seq(-35, 20, 5), limits=c(-35, 20)) + 
+  scale_y_continuous(breaks=seq(-30, 20, 10), limits=c(-35, 20)) + 
   coord_flip() +
   theme_bw() +
   theme(legend.position = "none",
@@ -69,8 +69,8 @@ eqspp.gg.time <- eqdat.lm.time %>%
         panel.grid.minor = element_blank(),
         text=element_text(family="sans",size=12,color="black"),
         legend.text = element_text(size=12),
-        axis.title=element_text(family="sans",size=10,color="black"),
-        axis.text=element_text(family="sans",size=8,color="black"),
+        axis.title=element_text(family="sans",size=14,color="black"),
+        axis.text=element_text(family="sans",size=12,color="black"),
         plot.margin=unit(c(5.5, 15, 5.5, 5.5), "points")) +
   NULL
 
@@ -93,8 +93,8 @@ eqspp.gg.sst <- eqdat.lm.sst %>%
         panel.grid.minor = element_blank(),
         text=element_text(family="sans",size=12,color="black"),
         legend.text = element_text(size=12),
-        axis.title=element_text(family="sans",size=10,color="black"),
-        axis.text=element_text(family="sans",size=8,color="black"),
+        axis.title=element_text(family="sans",size=14,color="black"),
+        axis.text=element_text(family="sans",size=12,color="black"),
         axis.title.y=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank()) +
@@ -118,12 +118,12 @@ eqspp.gg.sbt <- eqdat.lm.sbt %>%
         panel.grid.minor = element_blank(),
         text=element_text(family="sans",size=12,color="black"),
         legend.text = element_text(size=12),
-        axis.title=element_text(family="sans",size=10,color="black"),
-        axis.text=element_text(family="sans",size=8,color="black"),
+        axis.title=element_text(family="sans",size=14,color="black"),
+        axis.text=element_text(family="sans",size=12,color="black"),
         axis.title.y=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank()) +
   NULL
 
-eqspp.lm.gg <- cowplot::plot_grid(eqspp.gg.time, eqspp.gg.sst, eqspp.gg.sbt, align = "h", nrow = 1, rel_widths = c(0.4, 0.3, 0.3))
+eqspp.lm.gg <- cowplot::plot_grid(eqspp.gg.time, eqspp.gg.sst, eqspp.gg.sbt, align = "h", nrow = 1, rel_widths = c(0.44, 0.28, 0.28))
 ggsave(eqspp.lm.gg, width=11, height=7, dpi=300, filename=here("results","fig_equatorward_spp.png"))
